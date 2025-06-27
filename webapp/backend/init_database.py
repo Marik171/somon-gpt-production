@@ -51,8 +51,9 @@ def create_database_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS property_listings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collected_by_user_id INTEGER NOT NULL,
             title VARCHAR(500),
-            url VARCHAR(1000) UNIQUE NOT NULL,
+            url VARCHAR(1000) NOT NULL,
             price REAL NOT NULL,
             price_per_sqm REAL,
             area REAL,
@@ -155,7 +156,10 @@ def create_database_tables():
             is_active BOOLEAN DEFAULT 1,
             first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            view_count INTEGER DEFAULT 0
+            view_count INTEGER DEFAULT 0,
+            
+            FOREIGN KEY (collected_by_user_id) REFERENCES users (id) ON DELETE CASCADE,
+            UNIQUE(url, collected_by_user_id)
         )
     """)
     
@@ -249,6 +253,7 @@ def create_database_tables():
     """)
     
     # Create indexes for better performance
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_collected_by_user ON property_listings (collected_by_user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_price ON property_listings (price)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_city ON property_listings (city)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_district ON property_listings (district)")

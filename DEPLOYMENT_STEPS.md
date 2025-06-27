@@ -79,7 +79,7 @@ After deployment, Railway will give you a URL like:
 ### Set Environment Variables in Vercel
 In your Vercel dashboard, go to Settings → Environment Variables:
 ```
-REACT_APP_API_URL=https://your-backend-url.up.railway.app
+REACT_APP_API_URL=https://web-production-2ed0f.up.railway.app
 ```
 
 ### Your Frontend URL

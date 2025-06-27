@@ -44,8 +44,8 @@ class EnhancedDailyScheduler:
         
         # Try multiple possible database locations
         possible_db_paths = [
-            os.path.join(os.path.dirname(project_root), 'real_estate.db'),  # Root level (parent of somon_project)
             os.path.join(project_root, 'webapp', 'backend', 'real_estate.db'),  # Backend folder
+            os.path.join(project_root, 'real_estate.db'),  # Project root
         ]
         
         self.db_path = None
@@ -55,12 +55,13 @@ class EnhancedDailyScheduler:
                 break
         
         if not self.db_path:
-            # Default to root level location if none found
-            self.db_path = os.path.join(os.path.dirname(project_root), 'real_estate.db')
+            # Default to backend location if none found
+            self.db_path = os.path.join(project_root, 'webapp', 'backend', 'real_estate.db')
         
-        self.scraper_script = os.path.join(project_root, 'somon_project', 'scripts', 'run_scraper.py')
-        self.preprocessing_script = os.path.join(project_root, 'somon_project', 'utils', 'preprocess_listings_v2.py')
-        self.feature_engineering_script = os.path.join(project_root, 'somon_project', 'utils', 'feature_engineering_enhanced.py')
+        # Use actual project structure
+        self.scraper_script = os.path.join(project_root, 'scraper', 'spiders', 'somon_scraper_2.py')
+        self.preprocessing_script = os.path.join(project_root, 'utils', 'preprocess_listings_v2.py')
+        self.feature_engineering_script = os.path.join(project_root, 'utils', 'feature_engineering_enhanced.py')
         
         # Ensure logs directory exists
         os.makedirs(os.path.join(project_root, 'logs'), exist_ok=True)
@@ -68,6 +69,73 @@ class EnhancedDailyScheduler:
     def get_db_connection(self):
         """Get database connection"""
         return sqlite3.connect(self.db_path)
+    
+    def combine_scraped_files(self) -> Optional[str]:
+        """Combine all scraped CSV files from today into one consolidated file"""
+        try:
+            import pandas as pd
+            import glob
+            
+            # Find all scraped CSV files from today
+            today_str = datetime.now().strftime('%Y%m%d')
+            raw_data_dir = os.path.join(self.project_root, 'data', 'raw')
+            
+            # Look for files with today's date
+            pattern = os.path.join(raw_data_dir, f'scraped_*_{today_str}_*.csv')
+            csv_files = glob.glob(pattern)
+            
+            if not csv_files:
+                logger.warning(f"No scraped CSV files found for today ({today_str})")
+                return None
+            
+            logger.info(f"Found {len(csv_files)} CSV files to combine:")
+            for file in csv_files:
+                logger.info(f"  - {os.path.basename(file)}")
+            
+            # Read and combine all CSV files
+            combined_data = []
+            total_rows = 0
+            
+            for csv_file in csv_files:
+                try:
+                    df = pd.read_csv(csv_file)
+                    if len(df) > 0:
+                        combined_data.append(df)
+                        total_rows += len(df)
+                        logger.info(f"  ✅ Loaded {len(df)} rows from {os.path.basename(csv_file)}")
+                    else:
+                        logger.warning(f"  ⚠️ Empty file: {os.path.basename(csv_file)}")
+                except Exception as e:
+                    logger.error(f"  ❌ Error reading {os.path.basename(csv_file)}: {str(e)}")
+            
+            if not combined_data:
+                logger.error("No valid data found in any CSV files")
+                return None
+            
+            # Combine all DataFrames
+            combined_df = pd.concat(combined_data, ignore_index=True)
+            
+            # Remove duplicates based on URL (if URL column exists)
+            initial_count = len(combined_df)
+            if 'url' in combined_df.columns:
+                combined_df = combined_df.drop_duplicates(subset=['url'], keep='first')
+                deduplicated_count = len(combined_df)
+                if deduplicated_count < initial_count:
+                    logger.info(f"Removed {initial_count - deduplicated_count} duplicate URLs")
+            
+            # Save combined file
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            combined_filename = f'combined_listings_{timestamp}.csv'
+            combined_path = os.path.join(raw_data_dir, combined_filename)
+            
+            combined_df.to_csv(combined_path, index=False)
+            logger.info(f"✅ Combined CSV saved: {combined_path} ({len(combined_df)} rows)")
+            
+            return combined_path
+            
+        except Exception as e:
+            logger.error(f"Error combining CSV files: {str(e)}")
+            return None
     
     def run_data_collection_pipeline(self) -> Dict[str, Any]:
         """Run the complete data collection pipeline using existing scripts"""
@@ -82,101 +150,143 @@ class EnhancedDailyScheduler:
         }
         
         try:
-            # 1. Run scraper for different property configurations
+            # 1. Run Scrapy spider for different property configurations
             scraping_configs = [
-                ['--rooms', '1-komnatnyie', '--city', 'hudzhand'],
-                ['--rooms', '2-komnatnyie', '--city', 'hudzhand'],
-                ['--rooms', '3-komnatnyie', '--city', 'hudzhand'],
-                ['--rooms', '4-komnatnyie', '--city', 'hudzhand'],
+                {'rooms': '1-komnatnyie', 'city': 'hudzhand'},
+                {'rooms': '2-komnatnyie', 'city': 'hudzhand'},
+                {'rooms': '3-komnatnyie', 'city': 'hudzhand'},
+                {'rooms': '4-komnatnyie', 'city': 'hudzhand'},
             ]
             
             total_scraped = 0
             for config in scraping_configs:
                 try:
-                    logger.info(f"📊 Running scraper with config: {' '.join(config)}")
+                    config_str = f"rooms={config['rooms']}, city={config['city']}"
+                    logger.info(f"📊 Running Scrapy spider with config: {config_str}")
                     
-                    # Run the scraper script
+                    # Prepare scrapy command arguments
+                    scrapy_args = ['scrapy', 'crawl', 'somon_spider']
+                    for key, value in config.items():
+                        scrapy_args.extend(['-a', f'{key}={value}'])
+                    
+                    # Add output file
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    output_file = os.path.join(self.project_root, 'data', 'raw', f'scraped_{config["rooms"]}_{timestamp}.csv')
+                    scrapy_args.extend(['-o', output_file])
+                    
+                    # Run the Scrapy spider
                     result = subprocess.run(
-                        ['python', self.scraper_script] + config,
+                        scrapy_args,
                         capture_output=True,
                         text=True,
-                        timeout=1800  # 30 minutes timeout
+                        timeout=1800,  # 30 minutes timeout
+                        cwd=self.project_root  # Run from project root where scrapy.cfg is located
                     )
                     
                     if result.returncode == 0:
-                        # Parse output to get scraped count
-                        output_lines = result.stdout.split('\n')
-                        for line in output_lines:
-                            if 'scraped' in line.lower() and 'properties' in line.lower():
-                                try:
-                                    count = int(''.join(filter(str.isdigit, line)))
+                        # Check if output file was created and count items
+                        if os.path.exists(output_file):
+                            try:
+                                import csv
+                                with open(output_file, 'r', encoding='utf-8') as f:
+                                    reader = csv.reader(f)
+                                    count = sum(1 for row in reader) - 1  # Subtract header row
                                     total_scraped += count
-                                    break
-                                except ValueError:
-                                    pass
-                        logger.info(f"✅ Scraper completed: {' '.join(config)}")
+                                    logger.info(f"✅ Scraped {count} properties: {config_str}")
+                            except Exception as e:
+                                logger.warning(f"Could not count scraped items: {str(e)}")
+                        else:
+                            logger.warning(f"Output file not created: {output_file}")
                     else:
-                        error_msg = f"Scraper failed for {' '.join(config)}: {result.stderr}"
+                        error_msg = f"Scrapy failed for {config_str}: {result.stderr}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         
                 except subprocess.TimeoutExpired:
-                    error_msg = f"Scraper timed out for {' '.join(config)}"
+                    error_msg = f"Scrapy timed out for {config_str}"
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                 except Exception as e:
-                    error_msg = f"Scraper error for {' '.join(config)}: {str(e)}"
+                    error_msg = f"Scrapy error for {config_str}: {str(e)}"
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
             
             results['total_scraped'] = total_scraped
             logger.info(f"✅ Total properties scraped: {total_scraped}")
             
-            # 2. Run data preprocessing
-            try:
-                logger.info("🔄 Running data preprocessing...")
-                result = subprocess.run(
-                    ['python', self.preprocessing_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=600  # 10 minutes timeout
-                )
-                
-                if result.returncode == 0:
-                    results['preprocessing_success'] = True
-                    logger.info("✅ Data preprocessing completed")
-                else:
-                    error_msg = f"Preprocessing failed: {result.stderr}"
+            # 2. Combine all scraped CSV files into one
+            combined_csv_path = None
+            if total_scraped > 0:
+                try:
+                    logger.info("🔄 Combining scraped CSV files...")
+                    combined_csv_path = self.combine_scraped_files()
+                    if combined_csv_path:
+                        logger.info(f"✅ Combined CSV created: {combined_csv_path}")
+                    else:
+                        logger.warning("⚠️ No CSV files to combine")
+                except Exception as e:
+                    error_msg = f"CSV combination error: {str(e)}"
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
-                    
-            except Exception as e:
-                error_msg = f"Preprocessing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
             
-            # 3. Run feature engineering
-            try:
-                logger.info("🎯 Running feature engineering...")
-                result = subprocess.run(
-                    ['python', self.feature_engineering_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=900  # 15 minutes timeout
-                )
-                
-                if result.returncode == 0:
-                    results['feature_engineering_success'] = True
-                    logger.info("✅ Feature engineering completed")
-                else:
-                    error_msg = f"Feature engineering failed: {result.stderr}"
+            # 3. Run data preprocessing
+            if combined_csv_path:
+                try:
+                    logger.info("🔄 Running data preprocessing...")
+                    output_dir = os.path.join(self.project_root, 'data', 'preprocessed')
+                    os.makedirs(output_dir, exist_ok=True)
+                    
+                    result = subprocess.run(
+                        ['python', self.preprocessing_script, combined_csv_path, '-o', output_dir],
+                        capture_output=True,
+                        text=True,
+                        timeout=600  # 10 minutes timeout
+                    )
+                    
+                    if result.returncode == 0:
+                        results['preprocessing_success'] = True
+                        logger.info("✅ Data preprocessing completed")
+                    else:
+                        error_msg = f"Preprocessing failed: {result.stderr}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        
+                except Exception as e:
+                    error_msg = f"Preprocessing error: {str(e)}"
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
+            else:
+                logger.warning("⚠️ Skipping preprocessing - no combined CSV file")
+            
+            # 4. Run feature engineering
+            preprocessed_csv = os.path.join(self.project_root, 'data', 'preprocessed', 'cleaned_listings_v2.csv')
+            if os.path.exists(preprocessed_csv):
+                try:
+                    logger.info("🎯 Running feature engineering...")
+                    feature_output_dir = os.path.join(self.project_root, 'data', 'feature_engineered')
+                    os.makedirs(feature_output_dir, exist_ok=True)
                     
-            except Exception as e:
-                error_msg = f"Feature engineering error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
+                    result = subprocess.run(
+                        ['python', self.feature_engineering_script, preprocessed_csv, '-o', feature_output_dir],
+                        capture_output=True,
+                        text=True,
+                        timeout=900  # 15 minutes timeout
+                    )
+                    
+                    if result.returncode == 0:
+                        results['feature_engineering_success'] = True
+                        logger.info("✅ Feature engineering completed")
+                    else:
+                        error_msg = f"Feature engineering failed: {result.stderr}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        
+                except Exception as e:
+                    error_msg = f"Feature engineering error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+            else:
+                logger.warning("⚠️ Skipping feature engineering - no preprocessed CSV file")
             
             # 4. Import to database (using existing backend endpoint)
             try:
@@ -200,73 +310,101 @@ class EnhancedDailyScheduler:
             results['errors'].append(error_msg)
             return results
     
-    def detect_new_bargains(self, hours_back: int = 24) -> List[Dict[str, Any]]:
-        """Detect new bargain properties added in the last N hours"""
-        logger.info(f"🎯 Detecting new bargain properties from last {hours_back} hours...")
+    def detect_new_bargains_per_user(self, hours_back: int = 24) -> Dict[str, Dict[str, Any]]:
+        """Detect new bargain properties per user from their collected properties"""
+        logger.info(f"🎯 Detecting user-specific new bargains from last {hours_back} hours...")
         
         try:
             conn = self.get_db_connection()
             cursor = conn.cursor()
             
-            # Get bargain properties added/updated recently
+            # Calculate cutoff time
             cutoff_time = (datetime.now() - timedelta(hours=hours_back)).strftime('%Y-%m-%d %H:%M:%S')
             
-            query = """
-            SELECT id, title, url, price, area, rooms, floor, city, district, 
-                   bargain_category, price_difference, price_difference_percentage,
-                   estimated_monthly_rent, gross_rental_yield, payback_period_years,
-                   bargain_score, investment_category, created_at, updated_at
-            FROM property_listings 
-            WHERE bargain_category IN ('excellent_bargain', 'good_bargain', 'fair_value')
-            AND (created_at >= ? OR updated_at >= ?)
-            AND bargain_score IS NOT NULL
-            ORDER BY bargain_score DESC, price_difference_percentage DESC
-            LIMIT 100
-            """
+            # Get users with email notifications enabled
+            cursor.execute("""
+                SELECT DISTINCT u.id, u.email, u.full_name
+                FROM users u
+                WHERE u.email_notifications = 1
+                AND u.is_active = 1
+                AND u.email IS NOT NULL
+                AND u.email != ''
+            """)
+            users = cursor.fetchall()
             
-            cursor.execute(query, (cutoff_time, cutoff_time))
-            rows = cursor.fetchall()
+            user_bargains = {}
             
-            new_bargains = []
-            for row in rows:
-                new_bargains.append({
-                    'id': row[0],
-                    'title': row[1] or f"Property #{row[0]}",
-                    'url': row[2],
-                    'price': row[3] or 0,
-                    'area': row[4],
-                    'rooms': row[5],
-                    'floor': row[6],
-                    'city': row[7] or 'Khujand',
-                    'district': row[8] or 'Unknown District',
-                    'bargain_category': row[9] or 'fair_value',
-                    'price_difference': row[10] or 0,
-                    'price_difference_percentage': row[11] or 0,
-                    'estimated_monthly_rent': row[12],
-                    'gross_rental_yield': row[13],
-                    'payback_period_years': row[14],
-                    'bargain_score': row[15],
-                    'investment_category': row[16],
-                    'created_at': row[17],
-                    'updated_at': row[18]
-                })
+            for user_id, email, full_name in users:
+                logger.info(f"🔍 Checking bargains for user: {email}")
+                
+                # Get bargain properties collected by this user and added recently
+                query = """
+                SELECT id, title, url, price, area, rooms, floor, city, district, 
+                       bargain_category, price_difference, price_difference_percentage,
+                       estimated_monthly_rent, gross_rental_yield, payback_period_years,
+                       bargain_score, investment_category, created_at, updated_at
+                FROM property_listings 
+                WHERE collected_by_user_id = ?
+                AND bargain_category IN ('excellent_bargain', 'good_bargain', 'fair_value')
+                AND (created_at >= ? OR updated_at >= ?)
+                AND bargain_score IS NOT NULL
+                ORDER BY bargain_score DESC, price_difference_percentage DESC
+                LIMIT 20
+                """
+                
+                cursor.execute(query, (user_id, cutoff_time, cutoff_time))
+                rows = cursor.fetchall()
+                
+                bargains = []
+                for row in rows:
+                    bargains.append({
+                        'id': row[0],
+                        'title': row[1] or f"Property #{row[0]}",
+                        'url': row[2],
+                        'price': row[3] or 0,
+                        'area': row[4],
+                        'rooms': row[5],
+                        'floor': row[6],
+                        'city': row[7] or 'Khujand',
+                        'district': row[8] or 'Unknown District',
+                        'bargain_category': row[9] or 'fair_value',
+                        'price_difference': row[10] or 0,
+                        'price_difference_percentage': row[11] or 0,
+                        'estimated_monthly_rent': row[12],
+                        'gross_rental_yield': row[13],
+                        'payback_period_years': row[14],
+                        'bargain_score': row[15],
+                        'investment_category': row[16],
+                        'created_at': row[17],
+                        'updated_at': row[18]
+                    })
+                
+                if bargains:
+                    # Filter for truly new bargains (prioritize excellent and good bargains)
+                    excellent_bargains = [b for b in bargains if b['bargain_category'] == 'excellent_bargain']
+                    good_bargains = [b for b in bargains if b['bargain_category'] == 'good_bargain']
+                    fair_bargains = [b for b in bargains if b['bargain_category'] == 'fair_value'][:5]  # Limit fair value
+                    
+                    filtered_bargains = excellent_bargains + good_bargains + fair_bargains
+                    
+                    user_bargains[email] = {
+                        'user_name': full_name or email.split('@')[0],
+                        'bargains': filtered_bargains,
+                        'excellent_count': len(excellent_bargains),
+                        'good_count': len(good_bargains),
+                        'fair_count': len(fair_bargains)
+                    }
+                    logger.info(f"📊 Found {len(filtered_bargains)} new bargains for {email} "
+                               f"({len(excellent_bargains)} excellent, {len(good_bargains)} good, {len(fair_bargains)} fair)")
             
             conn.close()
-            
-            # Filter for truly new bargains (prioritize excellent and good bargains)
-            excellent_bargains = [b for b in new_bargains if b['bargain_category'] == 'excellent_bargain']
-            good_bargains = [b for b in new_bargains if b['bargain_category'] == 'good_bargain']
-            fair_bargains = [b for b in new_bargains if b['bargain_category'] == 'fair_value'][:10]  # Limit fair value
-            
-            filtered_bargains = excellent_bargains + good_bargains + fair_bargains
-            
-            logger.info(f"✅ Found {len(filtered_bargains)} new bargain properties "
-                       f"({len(excellent_bargains)} excellent, {len(good_bargains)} good, {len(fair_bargains)} fair)")
-            return filtered_bargains
+            total_bargains = sum(len(data['bargains']) for data in user_bargains.values())
+            logger.info(f"✅ Found {total_bargains} total bargains across {len(user_bargains)} users")
+            return user_bargains
             
         except Exception as e:
-            logger.error(f"❌ Error detecting new bargains: {str(e)}")
-            return []
+            logger.error(f"❌ Error detecting bargains: {str(e)}")
+            return {}
     
     def track_favorite_price_changes(self) -> Dict[str, Dict[str, Any]]:
         """Track price changes in users' favorite properties"""
@@ -347,10 +485,10 @@ class EnhancedDailyScheduler:
             logger.error(f"❌ Error tracking price changes: {str(e)}")
             return {}
     
-    def send_email_notifications(self, new_bargains: List[Dict[str, Any]], 
+    def send_email_notifications(self, user_bargains: Dict[str, Dict[str, Any]], 
                                 price_changes: Dict[str, Dict[str, Any]]) -> Dict[str, int]:
         """Send email notifications using the notification service"""
-        logger.info("📧 Sending email notifications...")
+        logger.info("📧 Sending user-specific email notifications...")
         
         try:
             # Import notification service with correct path
@@ -365,42 +503,28 @@ class EnhancedDailyScheduler:
                 'failed_emails': 0
             }
             
-            # Send bargain alerts to all subscribed users
-            if new_bargains:
-                conn = self.get_db_connection()
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    SELECT email, full_name
-                    FROM users
-                    WHERE email_notifications = 1 
-                    AND is_active = 1
-                    AND email IS NOT NULL 
-                    AND email != ''
-                """)
-                users = cursor.fetchall()
-                conn.close()
-                
-                logger.info(f"📤 Sending bargain alerts to {len(users)} users...")
-                
-                for email, full_name in users:
-                    try:
-                        # Only send top bargains to avoid spam
-                        top_bargains = new_bargains[:10]  # Top 10 bargains
-                        
+            # Send user-specific bargain alerts
+            logger.info(f"📤 Sending bargain alerts to {len(user_bargains)} users...")
+            
+            for email, data in user_bargains.items():
+                try:
+                    user_name = data['user_name']
+                    bargains = data['bargains']
+                    
+                    if bargains:  # Only send if user has bargains
                         success = notification_service.send_bargain_alert(
-                            email, full_name or email.split('@')[0], top_bargains
+                            email, user_name, bargains
                         )
                         if success:
                             notification_stats['bargain_emails_sent'] += 1
-                            logger.info(f"✅ Sent bargain alert to {email}")
+                            logger.info(f"✅ Sent {len(bargains)} bargain alerts to {email}")
                         else:
                             notification_stats['failed_emails'] += 1
                             logger.warning(f"❌ Failed to send bargain alert to {email}")
                             
-                    except Exception as e:
-                        logger.error(f"❌ Error sending bargain alert to {email}: {str(e)}")
-                        notification_stats['failed_emails'] += 1
+                except Exception as e:
+                    logger.error(f"❌ Error sending bargain alert to {email}: {str(e)}")
+                    notification_stats['failed_emails'] += 1
             
             # Send price change alerts
             logger.info(f"📤 Sending price change alerts to {len(price_changes)} users...")
@@ -450,9 +574,11 @@ Duration: {results.get('duration', 0):.2f} seconds
    • Database Import: {'✅' if results.get('scraping_results', {}).get('database_import_success') else '❌'}
 
 🎯 BARGAIN DETECTION:
-   • New Bargains Found: {results.get('new_bargains_count', 0)}
-   • Excellent Bargains: {len([b for b in results.get('new_bargains', []) if b.get('bargain_category') == 'excellent_bargain'])}
-   • Good Bargains: {len([b for b in results.get('new_bargains', []) if b.get('bargain_category') == 'good_bargain'])}
+   • Total New Bargains: {results.get('new_bargains_count', 0)}
+   • Users with Bargains: {len(results.get('user_bargains', {}))}
+   • Excellent Bargains: {sum(data.get('excellent_count', 0) for data in results.get('user_bargains', {}).values())}
+   • Good Bargains: {sum(data.get('good_count', 0) for data in results.get('user_bargains', {}).values())}
+   • Fair Value Bargains: {sum(data.get('fair_count', 0) for data in results.get('user_bargains', {}).values())}
 
 📈 PRICE TRACKING:
    • Users with Price Changes: {len(results.get('price_changes', {}))}
@@ -555,11 +681,11 @@ Status: {'✅ COMPLETED SUCCESSFULLY' if not results.get('errors') else '⚠️ 
             results['scraping_results'] = scraping_results
             results['errors'].extend(scraping_results.get('errors', []))
             
-            # 2. Detect new bargains
-            logger.info("🔄 Step 2: Bargain Detection")
-            new_bargains = self.detect_new_bargains()
-            results['new_bargains'] = new_bargains
-            results['new_bargains_count'] = len(new_bargains)
+            # 2. Detect new bargains per user
+            logger.info("🔄 Step 2: User-Specific Bargain Detection")
+            user_bargains = self.detect_new_bargains_per_user()
+            results['user_bargains'] = user_bargains
+            results['new_bargains_count'] = sum(len(data['bargains']) for data in user_bargains.values())
             
             # 3. Track favorite price changes
             logger.info("🔄 Step 3: Price Change Tracking")
@@ -569,7 +695,7 @@ Status: {'✅ COMPLETED SUCCESSFULLY' if not results.get('errors') else '⚠️ 
             
             # 4. Send notifications
             logger.info("🔄 Step 4: Email Notifications")
-            notification_stats = self.send_email_notifications(new_bargains, price_changes)
+            notification_stats = self.send_email_notifications(user_bargains, price_changes)
             results['notification_stats'] = notification_stats
             
             # Calculate duration
@@ -595,10 +721,10 @@ def main():
     scheduler = EnhancedDailyScheduler()
     
     # Schedule daily tasks
-    schedule.every().day.at("06:00").do(scheduler.run_daily_tasks)  # 6 AM daily
+    schedule.every().day.at("22:53").do(scheduler.run_daily_tasks)  # 9:54 PM daily
     
     logger.info("🕒 Enhanced Daily Scheduler started!")
-    logger.info("⏰ Tasks scheduled for 6:00 AM daily")
+    logger.info("⏰ Tasks scheduled for 10:50 PM daily")
     logger.info("🚀 To run immediately: python enhanced_daily_scheduler.py --run-now")
     logger.info("📧 Email notifications will be sent for:")
     logger.info("   • New bargain properties")

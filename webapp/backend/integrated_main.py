@@ -976,10 +976,15 @@ async def search_properties(
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Build query with filters
-        query = "SELECT * FROM property_listings WHERE 1=1"
-        params = []
-        logger.info("Starting database query for properties")
+        # Build query with filters - only show properties collected by current user
+        if current_user:
+            query = "SELECT * FROM property_listings WHERE collected_by_user_id = ?"
+            params = [current_user.id]
+            logger.info(f"Starting database query for properties collected by user {current_user.id}")
+        else:
+            # If no user logged in, return empty results (user-specific properties only)
+            logger.info("No user authenticated, returning empty results (user-specific properties only)")
+            return []
         
         if min_price:
             query += " AND price >= ?"
@@ -1378,11 +1383,17 @@ async def get_property_detail(property_id: int, current_user: Optional[UserInDB]
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT * FROM property_listings WHERE id = ?", (property_id,))
+    # Only allow access to properties collected by current user (or if no user auth required for viewing)
+    if current_user:
+        cursor.execute("SELECT * FROM property_listings WHERE id = ? AND collected_by_user_id = ?", (property_id, current_user.id))
+    else:
+        # If no user authenticated, don't allow access to any properties (user-specific properties only)
+        raise HTTPException(status_code=401, detail="Authentication required to view properties")
+    
     row = cursor.fetchone()
     
     if row is None:
-        raise HTTPException(status_code=404, detail="Property not found")
+        raise HTTPException(status_code=404, detail="Property not found or not accessible")
     
     # Update view count
     cursor.execute("""
@@ -1789,16 +1800,17 @@ async def get_dashboard_stats(current_user: UserInDB = Depends(get_current_activ
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) as total_properties FROM property_listings")
+    # Get user-specific property statistics
+    cursor.execute("SELECT COUNT(*) as total_properties FROM property_listings WHERE collected_by_user_id = ?", (current_user.id,))
     total_properties = cursor.fetchone()['total_properties']
     
-    cursor.execute("SELECT COUNT(*) as total_bargains FROM property_listings WHERE bargain_category IN ('excellent_bargain', 'good_bargain')")
+    cursor.execute("SELECT COUNT(*) as total_bargains FROM property_listings WHERE collected_by_user_id = ? AND bargain_category IN ('excellent_bargain', 'good_bargain')", (current_user.id,))
     total_bargains = cursor.fetchone()['total_bargains']
     
-    cursor.execute("SELECT COUNT(*) as excellent_bargains FROM property_listings WHERE bargain_category = 'excellent_bargain'")
+    cursor.execute("SELECT COUNT(*) as excellent_bargains FROM property_listings WHERE collected_by_user_id = ? AND bargain_category = 'excellent_bargain'", (current_user.id,))
     excellent_bargains = cursor.fetchone()['excellent_bargains']
     
-    cursor.execute("SELECT COUNT(*) as good_bargains FROM property_listings WHERE bargain_category = 'good_bargain'")
+    cursor.execute("SELECT COUNT(*) as good_bargains FROM property_listings WHERE collected_by_user_id = ? AND bargain_category = 'good_bargain'", (current_user.id,))
     good_bargains = cursor.fetchone()['good_bargains']
     
     cursor.execute("SELECT COUNT(*) as user_favorites FROM user_favorites WHERE user_id = ?", (current_user.id,))
@@ -1813,12 +1825,12 @@ async def get_dashboard_stats(current_user: UserInDB = Depends(get_current_activ
     cursor.execute("SELECT COUNT(*) as active_alerts FROM user_alerts WHERE user_id = ? AND active = 1", (current_user.id,))
     active_alerts = cursor.fetchone()['active_alerts']
     
-    # Average savings percentage from bargains
+    # Average savings percentage from user's bargains
     cursor.execute("""
         SELECT AVG(price_difference_percentage) as avg_savings_percentage 
         FROM property_listings 
-        WHERE bargain_category IS NOT NULL
-    """)
+        WHERE collected_by_user_id = ? AND bargain_category IS NOT NULL
+    """, (current_user.id,))
     avg_savings_percentage = cursor.fetchone()['avg_savings_percentage'] or 0
     
     conn.close()
@@ -1862,9 +1874,13 @@ async def get_bargains(
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Build query based on category
-        query = "SELECT * FROM property_listings WHERE bargain_category IS NOT NULL"
-        params = []
+        # Build query based on category - only show properties collected by current user
+        if current_user:
+            query = "SELECT * FROM property_listings WHERE collected_by_user_id = ? AND bargain_category IS NOT NULL"
+            params = [current_user.id]
+        else:
+            # If no user logged in, return empty results (user-specific properties only)
+            return []
         
         if category != "all":
             if category == "excellent":
@@ -3030,11 +3046,11 @@ async def import_to_database(
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Clear existing data to show only latest search results
-        logger.info("Clearing previous properties to show only latest search results")
-        cursor.execute("DELETE FROM property_listings")
-        cursor.execute("DELETE FROM user_favorites")  # Also clear favorites since property IDs will change
-        logger.info("Previous properties cleared, importing new data")
+        # Clear existing data for this user only (user-specific property isolation)
+        logger.info(f"Clearing previous properties for user {current_user.id} to show only latest search results")
+        cursor.execute("DELETE FROM property_listings WHERE collected_by_user_id = ?", (current_user.id,))
+        cursor.execute("DELETE FROM user_favorites WHERE user_id = ? AND property_id IN (SELECT id FROM property_listings WHERE collected_by_user_id = ?)", (current_user.id, current_user.id))
+        logger.info(f"Previous properties for user {current_user.id} cleared, importing new data")
         
         imported_count = 0
         failed_count = 0
@@ -3054,7 +3070,7 @@ async def import_to_database(
                 
                 cursor.execute("""
                     INSERT OR REPLACE INTO property_listings (
-                        url, price, area, rooms, floor, total_floors, city, district, 
+                        collected_by_user_id, url, price, area, rooms, floor, total_floors, city, district, 
                         build_state, property_type, price_per_sqm, predicted_price,
                         price_difference, price_difference_percentage, bargain_score,
                         bargain_category, investment_score, image_urls, photo_count,
@@ -3080,8 +3096,9 @@ async def import_to_database(
                         is_middle_floor, area_category, room_density, district_avg_price, district_price_ratio,
                         district_avg_area, district_area_ratio, city_avg_price, city_price_ratio, 
                         city_avg_area, city_area_ratio, scraped_date, is_active, first_seen, last_seen, view_count
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
+                    current_user.id,  # collected_by_user_id
                     row.get('url'),
                     row.get('price'),
                     row.get('area_m2'),
