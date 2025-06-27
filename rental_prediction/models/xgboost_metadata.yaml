@@ -1,0 +1,74 @@
+feature_names:
+- rooms
+- area_m2
+- floor
+- price_per_m2
+- area_per_room
+- floor_normalized
+- district_encoded
+- district_avg_price
+- district_median_price
+- district_price_per_m2
+- district_listing_count
+- district_price_std
+- district_avg_area
+- area_price_per_room
+- district_price_ratio
+- area_to_district_avg
+- month_sin
+- month_cos
+- is_weekend
+- renovation
+- bathroom
+- heating
+- district
+- day_Monday
+- day_Tuesday
+- day_Wednesday
+- day_Thursday
+- day_Friday
+- day_Saturday
+- day_Sunday
+- season_winter
+- season_spring
+- season_summer
+- season_fall
+metrics:
+  mae: !!python/object/apply:numpy.core.multiarray.scalar
+  - &id001 !!python/object/apply:numpy.dtype
+    args:
+    - f8
+    - false
+    - true
+    state: !!python/tuple
+    - 3
+    - <
+    - null
+    - null
+    - null
+    - -1
+    - -1
+    - 0
+  - !!binary |
+    iPHz9SSTN0A=
+  mape: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    QI1bXZEg6D8=
+  mse: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    jYoyn2CxtUA=
+  r2: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    kGw6tvjm7z8=
+  rmse: !!python/object/apply:numpy.core.multiarray.scalar
+  - *id001
+  - !!binary |
+    UGzE11ehUkA=
+model_name: xgboost
+parameters:
+  regressor__learning_rate: 0.1
+  regressor__max_depth: 8
+target: price
