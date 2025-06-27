@@ -712,35 +712,34 @@ async def startup_event():
     
     # Initialize database tables if they don't exist
     try:
-        # Check if database exists and has the right schema
-        if os.path.exists(str(db_path)):
-            # Check if the database has the necessary tables and columns
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # Check if property_listings table exists and has renovation column
-            cursor.execute("PRAGMA table_info(property_listings)")
-            columns = [row[1] for row in cursor.fetchall()]
-            
-            if 'property_listings' and 'renovation' in columns:
-                logger.info(f"Database exists with {len(columns)} columns including renovation fields")
-                conn.close()
-            else:
-                conn.close()
-                # Database exists but missing schema, try to update
-                logger.info("Database exists but schema incomplete, updating...")
+        logger.info("Checking database...")
+        # Just ensure we can connect - don't force table creation on startup
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if basic tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        users_table_exists = cursor.fetchone() is not None
+        
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='property_listings'")
+        properties_table_exists = cursor.fetchone() is not None
+        
+        conn.close()
+        
+        if not users_table_exists or not properties_table_exists:
+            logger.info("Creating missing database tables...")
+            try:
                 from init_database import create_database_tables
                 create_database_tables()
+                logger.info("Database tables created successfully")
+            except Exception as e:
+                logger.warning(f"Could not create database tables: {e}")
         else:
-            # Database doesn't exist, create it
-            logger.info("Database doesn't exist, creating new one...")
-            from init_database import create_database_tables
-            create_database_tables()
+            logger.info("Database tables exist")
             
-        logger.info("Database initialization complete")
     except Exception as e:
-        logger.warning(f"Database initialization issue: {e}")
-        logger.info("Continuing with existing database...")
+        logger.warning(f"Database check failed: {e}")
+        logger.info("Will continue without database validation")
     
     load_rental_model()
     load_properties_data()  # Add data loading
