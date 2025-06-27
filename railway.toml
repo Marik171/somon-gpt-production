@@ -10,3 +10,4 @@ restartPolicyType = "ON_FAILURE"
 [environments.production]
 PORT = "8000"
 ENVIRONMENT = "production"
+PYTHON_VERSION = "3.11"

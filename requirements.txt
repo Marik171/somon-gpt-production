@@ -1,3 +1,6 @@
+# Compatibility for Python 3.12+
+setuptools>=65.0.0
+
 # Core FastAPI Backend
 fastapi==0.104.1
 uvicorn[standard]==0.24.0

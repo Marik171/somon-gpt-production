@@ -23,7 +23,7 @@
 ### Push Your Code
 ```bash
 # Add your GitHub repository as remote
-git remote add origin https://github.com/YOUR_USERNAME/somon-gpt-production.git
+git remote add origin https://github.com/Marik171/somon-gpt-production
 
 # Push to GitHub
 git branch -M main
@@ -47,6 +47,7 @@ In your Railway dashboard, go to Variables and add:
 ENVIRONMENT=production
 SECRET_KEY=your-super-secure-secret-key-generate-this
 PORT=8000
+PYTHON_VERSION=3.11
 ```
 
 ### Generate Secret Key
