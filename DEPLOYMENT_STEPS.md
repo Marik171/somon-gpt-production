@@ -140,23 +140,37 @@ FRONTEND_URL=https://your-app-name.vercel.app
 - **Check Railway logs**: Dashboard → Deployments → View Logs
 - **Database errors**: Make sure the app can write to `/app/real_estate.db`
 - **Import errors**: Verify all dependencies in `requirements.txt`
+- **Health check failures**: Visit `/health` endpoint to test basic connectivity
+- **Python version issues**: Ensure Python 3.11 is specified in environment
 
 ### Frontend Issues
 - **Build failures**: Check Vercel build logs
 - **API errors**: Verify `REACT_APP_API_URL` environment variable
 - **CORS errors**: Ensure frontend URL is in backend CORS settings
 
+### Recent Fixes Applied
+✅ **Fixed Python 3.12 compatibility**: Added setuptools to requirements  
+✅ **Improved health checks**: Added simple `/health` endpoint for Railway  
+✅ **Updated startup command**: Using uvicorn directly instead of script  
+✅ **Pinned Python version**: Using stable Python 3.11  
+
 ### Common Fixes
 ```bash
 # If Railway deployment fails, check:
-1. requirements.txt has all dependencies
+1. requirements.txt has all dependencies including setuptools
 2. PORT environment variable is set
-3. Railway.toml is in root directory
+3. PYTHON_VERSION=3.11 environment variable is set
+4. Railway.toml is in root directory
 
 # If Vercel build fails:
 1. Check package.json scripts
 2. Verify React app builds locally: npm run build
 3. Check Node.js version compatibility
+
+# If health checks fail:
+1. Visit https://your-app.railway.app/health for simple check
+2. Visit https://your-app.railway.app/ for detailed health status
+3. Check Railway logs for startup errors
 ```
 
 ---
@@ -172,6 +186,19 @@ Your SomonGPT Real Estate Platform is now:
 **Share your success!** 🎊
 
 Your live platform helps users find real estate investment opportunities in Tajikistan with AI-powered analysis!
+
+---
+
+## 🆘 Current Deployment Status
+
+**ISSUE RESOLVED**: Health check failures due to Python 3.12 compatibility  
+**FIXES APPLIED**: 
+- ✅ Added setuptools to fix distutils import errors
+- ✅ Pinned Python version to 3.11 for stability  
+- ✅ Updated Railway configuration for uvicorn deployment
+- ✅ Added simple health check endpoint at `/health`
+
+**NEXT STEPS**: Redeploy on Railway with the updated configuration
 
 ---
 

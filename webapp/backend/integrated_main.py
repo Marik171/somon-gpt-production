@@ -759,22 +759,42 @@ async def debug_path():
         "db_size": os.path.getsize(db_path) if os.path.exists(db_path) else 0
     }
 
+@app.get("/health")
+async def simple_health_check():
+    """Simple health check endpoint for Railway"""
+    return {
+        "status": "healthy",
+        "service": "SomonGPT Real Estate API",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/")
 async def health_check():
-    """Health check endpoint"""
+    """Detailed health check endpoint"""
     try:
         # Test database connection
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM property_listings")
-        total_properties = cursor.fetchone()[0]
         
-        cursor.execute("SELECT AVG(price) FROM property_listings WHERE price IS NOT NULL")
-        avg_price_result = cursor.fetchone()
-        avg_price = float(avg_price_result[0]) if avg_price_result[0] else 0
+        # Check if tables exist first
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='property_listings'")
+        table_exists = cursor.fetchone() is not None
         
-        cursor.execute("SELECT COUNT(*) FROM property_listings WHERE bargain_category IN ('excellent_bargain', 'good_bargain')")
-        investment_opportunities = cursor.fetchone()[0]
+        if table_exists:
+            cursor.execute("SELECT COUNT(*) FROM property_listings")
+            total_properties = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT AVG(price) FROM property_listings WHERE price IS NOT NULL")
+            avg_price_result = cursor.fetchone()
+            avg_price = float(avg_price_result[0]) if avg_price_result[0] else 0
+            
+            cursor.execute("SELECT COUNT(*) FROM property_listings WHERE bargain_category IN ('excellent_bargain', 'good_bargain')")
+            investment_opportunities = cursor.fetchone()[0]
+        else:
+            total_properties = 0
+            avg_price = 0
+            investment_opportunities = 0
         
         conn.close()
         
@@ -782,6 +802,7 @@ async def health_check():
             "status": "healthy",
             "model_loaded": rental_predictor is not None,
             "database_connected": True,
+            "table_exists": table_exists,
             "total_properties": total_properties,
             "avg_price": avg_price,
             "investment_opportunities": investment_opportunities,
@@ -794,6 +815,7 @@ async def health_check():
             "status": "degraded",
             "model_loaded": rental_predictor is not None,
             "database_connected": False,
+            "table_exists": False,
             "total_properties": 0,
             "avg_price": 0,
             "investment_opportunities": 0,
