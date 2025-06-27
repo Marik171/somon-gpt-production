@@ -1,0 +1,53 @@
+{
+  "name": "real-estate-intelligence-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "keywords": [
+    "real-estate",
+    "investment",
+    "ai",
+    "machine-learning"
+  ],
+  "author": "Real Estate ML Pipeline",
+  "license": "MIT",
+  "description": "Real Estate Investment Intelligence Platform - Frontend",
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^5.17.1",
+    "@mui/material": "^5.17.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/react-plotly.js": "^2.6.3",
+    "axios": "^1.10.0",
+    "plotly.js": "^3.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-plotly.js": "^2.6.0",
+    "react-router-dom": "^7.6.2",
+    "react-scripts": "^5.0.1",
+    "tailwindcss": "^4.1.10",
+    "typescript": "^4.9.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/plotly.js": "^3.0.0"
+  }
+}
