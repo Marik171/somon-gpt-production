@@ -34,10 +34,64 @@ code {
   background: #a8a8a8;
 }
 
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target size */
+  button, .MuiButton-root, .MuiIconButton-root {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  /* Better spacing for mobile */
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  /* Mobile-optimized typography */
+  h1, .MuiTypography-h1 {
+    font-size: 2rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  h2, .MuiTypography-h2 {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  /* Better form spacing on mobile */
+  .MuiFormControl-root {
+    margin-bottom: 16px !important;
+  }
+  
+  /* Improved card spacing */
+  .MuiCard-root {
+    margin-bottom: 16px !important;
+  }
+  
+  /* Better mobile table alternatives */
+  .mobile-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Plotly chart responsiveness */
 .plotly-graph-div {
   width: 100% !important;
   height: 100% !important;
+}
+
+/* Mobile-optimized charts */
+@media (max-width: 768px) {
+  .plotly-graph-div {
+    min-height: 300px !important;
+  }
+  
+  /* Hide chart toolbar on mobile for cleaner look */
+  .modebar {
+    display: none !important;
+  }
 }
 
 /* Property card animations */
@@ -48,6 +102,17 @@ code {
 .property-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile-optimized property cards */
+@media (max-width: 768px) {
+  .property-card {
+    margin-bottom: 16px;
+  }
+  
+  .property-card:hover {
+    transform: none; /* Disable hover effects on mobile */
+  }
 }
 
 /* Investment score badges */
@@ -84,4 +149,57 @@ code {
   background-color: #fee2e2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+/* Mobile-optimized badges */
+@media (max-width: 768px) {
+  .investment-badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+  }
+}
+
+/* Touch-friendly interactions */
+@media (max-width: 768px) {
+  /* Increase tap target size for better usability */
+  .MuiChip-root {
+    margin: 2px !important;
+    min-height: 36px !important;
+  }
+  
+  /* Better spacing for form elements */
+  .MuiTextField-root {
+    margin-bottom: 16px !important;
+  }
+  
+  /* Improved mobile navigation */
+  .MuiAppBar-root {
+    padding: 0 8px !important;
+  }
+  
+  /* Better mobile menu */
+  .MuiMenu-paper {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px !important;
+  }
+}
+
+/* Responsive image handling */
+@media (max-width: 768px) {
+  .MuiCardMedia-root {
+    height: 200px !important; /* Smaller images on mobile */
+  }
+}
+
+/* Mobile-optimized pagination */
+@media (max-width: 768px) {
+  .MuiPagination-root {
+    justify-content: center !important;
+  }
+  
+  .MuiPaginationItem-root {
+    margin: 0 2px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
 }
