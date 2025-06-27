@@ -69,3 +69,4 @@ data/feature_engineered/*.parquet
 *.tmp
 *.temp
 *.bak
+node_modules/
