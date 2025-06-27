@@ -759,14 +759,65 @@ async def debug_path():
     }
 
 @app.get("/health")
-async def simple_health_check():
-    """Simple health check endpoint for Railway"""
-    return {
-        "status": "healthy",
-        "service": "SomonGPT Real Estate API",
-        "version": "2.0.0",
-        "timestamp": datetime.now().isoformat()
-    }
+async def health_check():
+    """Simple health check for Railway"""
+    return {"status": "healthy", "service": "somongpt-backend"}
+
+@app.get("/health/detailed")
+async def detailed_health_check():
+    """Detailed health check with all components"""
+    try:
+        # Quick database check
+        db_status = "unknown"
+        model_status = "unknown"
+        
+        try:
+            conn = sqlite3.connect(DATABASE_URL)
+            cursor = conn.cursor()
+            
+            # Check if properties table exists
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='properties'
+            """)
+            
+            if cursor.fetchone():
+                # Quick count check
+                cursor.execute("SELECT COUNT(*) FROM properties")
+                property_count = cursor.fetchone()[0]
+                db_status = f"connected ({property_count} properties)"
+            else:
+                db_status = "connected (no properties table)"
+                
+            conn.close()
+        except Exception as e:
+            db_status = f"error: {str(e)[:50]}"
+        
+        # Check ML model
+        try:
+            global model, model_loaded, model_metadata
+            if model_loaded and model is not None:
+                model_status = f"loaded (accuracy: {model_metadata.get('accuracy', 'unknown')})"
+            else:
+                model_status = "not loaded"
+        except Exception as e:
+            model_status = f"error: {str(e)[:50]}"
+        
+        return {
+            "status": "healthy",
+            "service": "somongpt-backend",
+            "database": db_status,
+            "ml_model": model_status,
+            "environment": os.getenv("ENVIRONMENT", "development"),
+            "python_path": os.getenv("PYTHONPATH", "not set")
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "service": "somongpt-backend", 
+            "error": str(e)
+        }
 
 @app.get("/")
 async def health_check():
