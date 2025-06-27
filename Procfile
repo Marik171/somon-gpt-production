@@ -1,1 +1,1 @@
-web: cd webapp/backend && PYTHONPATH=/app/webapp/backend gunicorn integrated_main:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile -
+web: cd webapp/backend && PYTHONPATH=/app/webapp/backend python -m uvicorn integrated_main:app --host 0.0.0.0 --port $PORT
