@@ -65,30 +65,30 @@ const DataCollection: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const roomOptions = [
-    { value: '1-komnatnyie', label: '1-комнатные' },
-    { value: '2-komnatnyie', label: '2-комнатные' },
-    { value: '3-komnatnyie', label: '3-комнатные' },
-    { value: '4-komnatnyie', label: '4-комнатные' },
-    { value: '5-komnatnyie', label: '5-комнатные' }
+    { value: '1-komnatnyie', label: '1-bedroom' },
+    { value: '2-komnatnyie', label: '2-bedroom' },
+    { value: '3-komnatnyie', label: '3-bedroom' },
+    { value: '4-komnatnyie', label: '4-bedroom' },
+    { value: '5-komnatnyie', label: '5-bedroom' }
   ];
 
   const cityOptions = [
-    { value: 'hudzhand', label: 'Худжанд' },
-    { value: 'dushanbe', label: 'Душанбе' },
-    { value: 'kulob', label: 'Кулоб' },
-    { value: 'qurghonteppa', label: 'Курган-Тюбе' },
-    { value: 'istiklol', label: 'Истиклол' }
+    { value: 'hudzhand', label: 'Khujand' },
+    { value: 'dushanbe', label: 'Dushanbe' },
+    { value: 'kulob', label: 'Kulob' },
+    { value: 'qurghonteppa', label: 'Qurghonteppa' },
+    { value: 'istiklol', label: 'Istiklol' }
   ];
 
   const buildStateOptions = [
-    { value: 'sostoyanie---10', label: 'Построено' },
-    { value: 'sostoyanie---11', label: 'На стадии строительства' }
+    { value: 'sostoyanie---10', label: 'Completed' },
+    { value: 'sostoyanie---11', label: 'Under Construction' }
   ];
 
   const propertyTypeOptions = [
-    { value: '', label: 'Все типы' },
-    { value: 'type---1', label: 'Вторичный рынок' },
-    { value: 'type---2', label: 'Новостройки' }
+    { value: '', label: 'All Types' },
+    { value: 'type---1', label: 'Secondary Market' },
+    { value: 'type---2', label: 'New Construction' }
   ];
 
   const getStepStatus = (step: string) => {
@@ -189,26 +189,26 @@ const DataCollection: React.FC = () => {
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Сбор данных недвижимости
+          Real Estate Data Collection
         </Typography>
         
         <Typography variant="body1" color="text.secondary" paragraph>
-          Начните с определения критериев поиска, затем система автоматически соберет данные о недвижимости, 
-          обработает их и подготовит для анализа.
+          Start by defining your search criteria, then the system will automatically collect real estate data, 
+          process it, and prepare it for analysis.
         </Typography>
 
         <Paper sx={{ p: 3, mb: 3 }}>
           <form onSubmit={handleSubmit}>
             <Typography variant="h6" gutterBottom>
-              Критерии поиска
+              Search Criteria
             </Typography>
             
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
               <FormControl fullWidth>
-                <InputLabel>Количество комнат</InputLabel>
+                <InputLabel>Number of Rooms</InputLabel>
                 <Select
                   value={formData.rooms}
-                  label="Количество комнат"
+                  label="Number of Rooms"
                   onChange={(e) => handleInputChange('rooms', e.target.value)}
                 >
                   {roomOptions.map(option => (
@@ -220,10 +220,10 @@ const DataCollection: React.FC = () => {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel>Город</InputLabel>
+                <InputLabel>City</InputLabel>
                 <Select
                   value={formData.city}
-                  label="Город"
+                  label="City"
                   onChange={(e) => handleInputChange('city', e.target.value)}
                 >
                   {cityOptions.map(option => (
@@ -235,10 +235,10 @@ const DataCollection: React.FC = () => {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel>Состояние строительства</InputLabel>
+                <InputLabel>Construction Status</InputLabel>
                 <Select
                   value={formData.build_state}
-                  label="Состояние строительства"
+                  label="Construction Status"
                   onChange={(e) => handleInputChange('build_state', e.target.value)}
                 >
                   {buildStateOptions.map(option => (
@@ -250,10 +250,10 @@ const DataCollection: React.FC = () => {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel>Тип недвижимости</InputLabel>
+                <InputLabel>Property Type</InputLabel>
                 <Select
                   value={formData.property_type || ''}
-                  label="Тип недвижимости"
+                  label="Property Type"
                   onChange={(e) => handleInputChange('property_type', e.target.value)}
                 >
                   {propertyTypeOptions.map(option => (
@@ -274,7 +274,7 @@ const DataCollection: React.FC = () => {
                 startIcon={isLoading ? <CircularProgress size={20} /> : <SearchIcon />}
                 fullWidth
               >
-                {isLoading ? 'Сбор данных...' : 'Начать сбор данных'}
+                {isLoading ? 'Collecting Data...' : 'Start Data Collection'}
               </Button>
             </Box>
           </form>
@@ -284,7 +284,7 @@ const DataCollection: React.FC = () => {
         {(isLoading || result) && (
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Процесс обработки данных
+              Data Processing Pipeline
             </Typography>
             
             <Stepper orientation="vertical">
@@ -296,7 +296,7 @@ const DataCollection: React.FC = () => {
                   error={getStepStatus('scraping') === 'error'}
                   icon={getStepStatus('scraping') === 'completed' ? <CheckCircleIcon /> : undefined}
                 >
-                  Сбор данных с сайта
+                  Data Collection from Website
                 </StepLabel>
               </Step>
               
@@ -308,7 +308,7 @@ const DataCollection: React.FC = () => {
                   error={getStepStatus('preprocessing') === 'error'}
                   icon={getStepStatus('preprocessing') === 'completed' ? <CheckCircleIcon /> : undefined}
                 >
-                  Предварительная обработка
+                  Data Preprocessing
                 </StepLabel>
               </Step>
               
@@ -320,7 +320,7 @@ const DataCollection: React.FC = () => {
                   error={getStepStatus('feature_engineering') === 'error'}
                   icon={getStepStatus('feature_engineering') === 'completed' ? <CheckCircleIcon /> : undefined}
                 >
-                  Инженерия признаков
+                  Feature Engineering
                 </StepLabel>
               </Step>
               
@@ -332,7 +332,7 @@ const DataCollection: React.FC = () => {
                   error={getStepStatus('database_import') === 'error'}
                   icon={getStepStatus('database_import') === 'completed' ? <CheckCircleIcon /> : undefined}
                 >
-                  Импорт в базу данных
+                  Database Import
                 </StepLabel>
               </Step>
             </Stepper>
@@ -349,7 +349,7 @@ const DataCollection: React.FC = () => {
         {result && (
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Результаты
+              Results
             </Typography>
             
             {result.status === 'success' ? (
@@ -366,7 +366,7 @@ const DataCollection: React.FC = () => {
               <Box sx={{ mb: 2 }}>
                 <Chip 
                   icon={<InfoIcon />}
-                  label={`Собрано объектов: ${result.total_scraped}`}
+                  label={`Properties Collected: ${result.total_scraped}`}
                   color="primary"
                   variant="outlined"
                 />
@@ -376,7 +376,7 @@ const DataCollection: React.FC = () => {
             {result.files_created && result.files_created.length > 0 && (
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>Созданные файлы ({result.files_created.length})</Typography>
+                  <Typography>Generated Files ({result.files_created.length})</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <List dense>
@@ -387,7 +387,7 @@ const DataCollection: React.FC = () => {
                         </ListItemIcon>
                         <ListItemText 
                           primary={file}
-                          secondary={`Файл ${index + 1} из ${result.files_created?.length || 0}`}
+                          secondary={`File ${index + 1} of ${result.files_created?.length || 0}`}
                         />
                       </ListItem>
                     ))}
@@ -407,39 +407,39 @@ const DataCollection: React.FC = () => {
         {/* Info Panel */}
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
-            Информация о процессе
+            Process Information
           </Typography>
           
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Что происходит при сборе данных?</Typography>
+              <Typography>What happens during data collection?</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography component="div" variant="body2">
-                <ol>
-                  <li><strong>Сбор данных</strong> - Система автоматически соберет объявления о недвижимости с сайта Somon.tj по заданным критериям</li>
-                  <li><strong>Предварительная обработка</strong> - Очистка и нормализация данных, удаление дубликатов</li>
-                  <li><strong>Инженерия признаков</strong> - Создание дополнительных характеристик для анализа и прогнозирования</li>
-                  <li><strong>Готовность к анализу</strong> - После завершения данные будут доступны для поиска и анализа</li>
-                </ol>
-              </Typography>
+                              <Typography component="div" variant="body2">
+                  <ol>
+                    <li><strong>Data Collection</strong> - The system automatically collects real estate listings from Somon.tj based on your specified criteria</li>
+                    <li><strong>Data Preprocessing</strong> - Data cleaning, normalization, and duplicate removal</li>
+                    <li><strong>Feature Engineering</strong> - Creation of additional characteristics for analysis and prediction</li>
+                    <li><strong>Ready for Analysis</strong> - After completion, data will be available for search and analysis</li>
+                  </ol>
+                </Typography>
             </AccordionDetails>
           </Accordion>
           
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Какие данные собираются?</Typography>
+              <Typography>What data is collected?</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography variant="body2">
-                • Цена и цена за квадратный метр<br/>
-                • Количество комнат и общая площадь<br/>
-                • Этаж и общее количество этажей<br/>
-                • Район и адрес<br/>
-                • Тип строительства и состояние<br/>
-                • Фотографии объекта<br/>
-                • Дополнительные характеристики
-              </Typography>
+                              <Typography variant="body2">
+                  • Price and price per square meter<br/>
+                  • Number of rooms and total area<br/>
+                  • Floor and total number of floors<br/>
+                  • District and address<br/>
+                  • Construction type and condition<br/>
+                  • Property photos<br/>
+                  • Additional characteristics
+                </Typography>
             </AccordionDetails>
           </Accordion>
         </Paper>

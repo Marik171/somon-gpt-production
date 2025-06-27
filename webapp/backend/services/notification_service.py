@@ -213,8 +213,8 @@ class EmailNotificationService:
                 
                 <div class="footer">
                     <p><strong>Don't miss out on these opportunities!</strong></p>
-                    <a href="http://localhost:3001/bargains" class="cta-button">View All Bargains</a>
-                    <a href="http://localhost:3001/search" class="cta-button">Search Properties</a>
+                                            <a href="https://somongpt.vercel.app/bargains" class="cta-button">View All Bargains</a>
+                        <a href="https://somongpt.vercel.app/search" class="cta-button">Search Properties</a>
                     
                     <p style="margin-top: 20px; font-size: 12px; color: #666;">
                         This is an automated notification from SomonGPT Real Estate Intelligence.<br>
@@ -254,8 +254,8 @@ class EmailNotificationService:
         
         text_content += f"""
         
-        View all bargains: http://localhost:3001/bargains
-        Search properties: http://localhost:3001/search
+        View all bargains: https://somongpt.vercel.app/bargains
+        Search properties: https://somongpt.vercel.app/search
         
         Best regards,
         SomonGPT Real Estate Intelligence Team
@@ -346,8 +346,8 @@ class EmailNotificationService:
                 
                 <div class="footer">
                     <p><strong>Stay updated with your investment opportunities!</strong></p>
-                                         <a href="http://localhost:3001/history" class="cta-button">View Your Favorites</a>
-                     <a href="http://localhost:3001/search" class="cta-button">Search More Properties</a>
+                                                                 <a href="https://somongpt.vercel.app/history" class="cta-button">View Your Favorites</a>
+                        <a href="https://somongpt.vercel.app/search" class="cta-button">Search More Properties</a>
                     
                     <p style="margin-top: 20px; font-size: 12px; color: #666;">
                         This is an automated notification from SomonGPT Real Estate Intelligence.<br>
@@ -367,6 +367,152 @@ class EmailNotificationService:
         
         return self.send_email(recipient_email, subject, html_content)
     
+    def send_welcome_email(self, recipient_email: str, user_name: str) -> bool:
+        """Send welcome email to newly registered users"""
+        subject = "🏠 Welcome to SomonGPT Real Estate Intelligence!"
+        
+        # HTML template for welcome email
+        html_template = Template("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Welcome to SomonGPT</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #2563eb, #10b981); color: white; padding: 30px; border-radius: 8px; text-align: center; }
+                .content { padding: 20px 0; }
+                .feature-card { border: 1px solid #e0e0e0; border-radius: 8px; margin: 15px 0; padding: 20px; background: #f9f9f9; }
+                .feature-icon { font-size: 24px; margin-bottom: 10px; }
+                .cta-button { background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; font-weight: bold; }
+                .cta-button:hover { background: #1d4ed8; }
+                .footer { margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center; font-size: 14px; color: #666; }
+                .highlight { background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+                .step { background: white; border-radius: 8px; padding: 15px; margin: 10px 0; border-left: 4px solid #10b981; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎉 Welcome to SomonGPT!</h1>
+                    <h2>Real Estate Intelligence Platform</h2>
+                    <p>Hello {{ user_name }}, thank you for joining our AI-powered real estate investment platform!</p>
+                </div>
+                
+                <div class="content">
+                    <div class="highlight">
+                        <strong>🚀 Get Started in 3 Easy Steps:</strong>
+                    </div>
+                    
+                    <div class="step">
+                        <strong>1. 📊 Collect Property Data</strong><br>
+                        Start by collecting property listings based on your investment criteria. This is the foundation for all our AI-powered features.
+                    </div>
+                    
+                    <div class="step">
+                        <strong>2. 🎯 Find Bargain Properties</strong><br>
+                        Our AI will analyze market data to identify undervalued properties with high investment potential.
+                    </div>
+                    
+                    <div class="step">
+                        <strong>3. 📈 Track Your Investments</strong><br>
+                        Monitor price changes, receive daily market summaries, and get personalized investment alerts.
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <a href="https://somongpt.vercel.app/collect" class="cta-button">🚀 Start Collecting Data</a>
+                    </div>
+                    
+                    <h2>🔥 Platform Features</h2>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <h3>Bargain Finder</h3>
+                        <p>AI-powered analysis to identify undervalued properties with exceptional investment potential. Get alerts when new bargains are discovered.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔍</div>
+                        <h3>Smart Property Search</h3>
+                        <p>Advanced filtering system to find properties matching your exact investment criteria. Search by price, location, size, and investment potential.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Market Dashboard</h3>
+                        <p>Real-time market analytics with interactive charts showing price trends, investment opportunities, and market insights.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🤖</div>
+                        <h3>AI Price Predictor</h3>
+                        <p>Machine learning-powered property valuation tool. Get accurate price predictions based on market data and property characteristics.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📧</div>
+                        <h3>Automated Notifications</h3>
+                        <p>Daily market summaries, bargain alerts, and price change notifications delivered directly to your inbox.</p>
+                    </div>
+                    
+                    <div class="highlight">
+                        <strong>💡 Pro Tip:</strong> Start with data collection to unlock all features. The more data you collect, the better our AI recommendations become!
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://somongpt.vercel.app/home" class="cta-button">🏠 Go to Dashboard</a>
+                        <a href="https://somongpt.vercel.app/collect" class="cta-button">📊 Collect Data</a>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p><strong>SomonGPT Real Estate Intelligence</strong></p>
+                    <p>AI-Powered Property Investment Platform for Tajikistan</p>
+                    <p>Need help? Contact us or visit our platform for tutorials and support.</p>
+                    <p style="font-size: 12px; margin-top: 15px;">
+                        This email was sent because you registered for SomonGPT Real Estate Intelligence Platform.<br>
+                        If you didn't register, please ignore this email.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """)
+        
+        # Plain text version
+        text_content = f"""
+        Welcome to SomonGPT Real Estate Intelligence!
+        
+        Hello {user_name},
+        
+        Thank you for joining our AI-powered real estate investment platform!
+        
+        GET STARTED IN 3 EASY STEPS:
+        1. Collect Property Data - Start by collecting property listings based on your criteria
+        2. Find Bargain Properties - Our AI will identify undervalued properties for you
+        3. Track Your Investments - Monitor prices and receive personalized alerts
+        
+        PLATFORM FEATURES:
+        🎯 Bargain Finder - AI-powered undervalued property detection
+        🔍 Smart Property Search - Advanced filtering and search capabilities
+        📊 Market Dashboard - Real-time analytics and market insights
+        🤖 AI Price Predictor - Machine learning property valuations
+        📧 Automated Notifications - Daily summaries and investment alerts
+        
+                 Start your real estate investment journey today!
+         Visit: https://somongpt.vercel.app/collect
+        
+        Best regards,
+        SomonGPT Real Estate Intelligence Team
+        """
+        
+        html_content = html_template.render(
+            user_name=user_name,
+        )
+        
+        return self.send_email(recipient_email, subject, html_content, text_content)
+
     def send_daily_market_summary(self, recipient_email: str, user_name: str, market_summary: Dict[str, Any]) -> bool:
         """Send daily market summary"""
         subject = f"📊 Daily Market Summary - {datetime.now().strftime('%B %d, %Y')}"

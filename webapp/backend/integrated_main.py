@@ -876,7 +876,7 @@ async def health_check():
 
 # Authentication Routes
 @app.post("/auth/register", response_model=ApiResponse)
-async def register_user(user_data: UserCreate):
+async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks):
     """Register a new user"""
     if get_user_by_email(user_data.email):
         raise HTTPException(
@@ -887,9 +887,46 @@ async def register_user(user_data: UserCreate):
     user = create_user_in_db(user_data)
     logger.info(f"New user registered: {user.email}")
     
+    # Send welcome email in the background
+    def send_welcome_email_task():
+        try:
+            logger.info(f"🔄 Starting welcome email task for {user.email}")
+            
+            # Import with proper path
+            import sys
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            sys.path.insert(0, current_dir)
+            
+            from services.notification_service import EmailNotificationService
+            
+            logger.info("📧 EmailNotificationService imported successfully")
+            email_service = EmailNotificationService()
+            
+            logger.info(f"📧 Email service configured: {email_service.is_configured}")
+            
+            # Use full_name if available, otherwise use email prefix
+            display_name = user.full_name or user.email.split('@')[0]
+            logger.info(f"📧 Sending welcome email to {user.email} (display name: {display_name})")
+            
+            success = email_service.send_welcome_email(user.email, display_name)
+            if success:
+                logger.info(f"✅ Welcome email sent successfully to {user.email}")
+            else:
+                logger.warning(f"⚠️  Failed to send welcome email to {user.email} - Email service may not be configured")
+        except ImportError as e:
+            logger.error(f"❌ Import error for welcome email to {user.email}: {str(e)}")
+        except Exception as e:
+            logger.error(f"❌ Error sending welcome email to {user.email}: {str(e)}")
+            import traceback
+            logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+    
+    # Add the welcome email task to background tasks
+    background_tasks.add_task(send_welcome_email_task)
+    
     return ApiResponse(
         success=True,
-        message="User registered successfully",
+        message="User registered successfully! Check your email for a welcome message.",
         data={"user_id": user.id, "email": user.email}
     )
 
@@ -3589,6 +3626,48 @@ async def get_cash_flow_distribution():
     except Exception as e:
         logger.error(f"Error getting cash flow distribution: {e}")
         return {"labels": [], "values": [], "counts": []}
+
+
+# Test endpoint for welcome email
+@app.post("/test/welcome-email")
+async def test_welcome_email(email: str, name: str = "Test User"):
+    """Test endpoint to send welcome email"""
+    try:
+        logger.info(f"🧪 Testing welcome email for {email}")
+        
+        # Import with proper path
+        import sys
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, current_dir)
+        
+        from services.notification_service import EmailNotificationService
+        
+        email_service = EmailNotificationService()
+        logger.info(f"📧 Email service configured: {email_service.is_configured}")
+        
+        if not email_service.is_configured:
+            return {"success": False, "message": "Email service not configured", "configured": False}
+        
+        success = email_service.send_welcome_email(email, name)
+        
+        return {
+            "success": success,
+            "message": "Welcome email sent successfully" if success else "Failed to send welcome email",
+            "configured": email_service.is_configured,
+            "email": email,
+            "name": name
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in test welcome email: {str(e)}")
+        import traceback
+        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}",
+            "configured": False
+        }
 
 
 # Production deployment configuration
