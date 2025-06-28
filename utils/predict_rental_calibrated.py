@@ -34,46 +34,54 @@ class RentalPricePredictorCalibrated:
         """Initialize calibration rules based on property types and market analysis"""
         
         # Calibration multipliers based on property characteristics
-        # These are derived from the gap analysis between predictions and expected ranges
+        # Reduced multipliers to prevent artificial inflation of rental prices
         self.calibration_rules = {
             'base_multipliers': {
                 'budget': 1.0,      # Budget apartments are mostly accurate
-                'mid_range': 1.35,  # Mid-range need ~35% boost (1848 → 2500)
-                'luxury': 1.45,     # Luxury need ~45% boost (3158 → 4500)
+                'mid_range': 1.15,  # Reduced from 1.35 to 1.15 (15% boost instead of 35%)
+                'luxury': 1.25,     # Reduced from 1.45 to 1.25 (25% boost instead of 45%)
             },
             
             'district_multipliers': {
-                # Premium districts need higher multipliers
-                'Универмаг': 1.2,
-                'Центр': 1.25,
-                'К. Худжанди': 1.15,
-                'Исмоили Сомони': 1.15,
-                'Кооператор': 1.1,
+                # Premium districts - based on actual rental training data
+                'Универмаг': 1.1,      # Premium shopping district
+                'Центр': 1.12,         # City center premium
+                'К. Худжанди': 1.08,   # Major street, good location
+                'Исмоили Сомони': 1.08, # Major avenue
+                'Кооператор': 1.05,    # Good residential area
                 
-                # Standard districts
-                '19 мкр': 1.05,
-                '20 мкр': 1.05,
-                '31 мкр': 1.0,
-                '32 мкр': 1.0,
+                # Standard microdistricts - based on rental data
+                '18 мкр': 1.02,        # Established microdistrict
+                '19 мкр': 1.02,        # Popular area
+                '20 мкр': 1.02,        # Standard microdistrict
+                '31 мкр': 1.0,         # Baseline
+                '32 мкр': 1.0,         # Baseline
+                '33 мкр': 0.98,        # Slightly lower demand
+                '34 мкр': 0.98,        # Slightly lower demand
                 
-                # Budget districts (no boost needed)
-                'Пахтакор': 0.95,
-                'Шелкокомбинат': 0.95,
-                'Панчшанбе': 1.0,
+                # Budget/Industrial districts
+                'Пахтакор': 0.98,      # Industrial area
+                'Шелкокомбинат': 0.98, # Industrial area
+                'Панчшанбе': 1.0,      # Market area
+                'Гулбахор': 1.0,       # Standard residential
+                'Анис': 1.0,           # Standard area
+                
+                # Default for any unlisted districts
+                'Худжанд': 1.0,        # Default fallback
             },
             
             'renovation_multipliers': {
-                'Новый ремонт': 1.2,    # Luxury renovations need boost
-                'С ремонтом': 1.1,      # Standard renovations need small boost
+                'Новый ремонт': 1.1,    # Reduced from 1.2 to 1.1 (10% instead of 20%)
+                'С ремонтом': 1.05,     # Reduced from 1.1 to 1.05 (5% instead of 10%)
                 'Без ремонта': 1.0,     # No renovation baseline
             },
             
             'area_multipliers': {
-                # Larger apartments tend to be under-predicted
+                # Reduced area multipliers
                 'small': 1.0,    # < 50m²
-                'medium': 1.05,  # 50-75m²
-                'large': 1.15,   # 75-100m²
-                'xlarge': 1.25,  # > 100m²
+                'medium': 1.02,  # Reduced from 1.05 to 1.02 (50-75m²)
+                'large': 1.05,   # Reduced from 1.15 to 1.05 (75-100m²)
+                'xlarge': 1.08,  # Reduced from 1.25 to 1.08 (> 100m²)
             }
         }
     
@@ -85,10 +93,10 @@ class RentalPricePredictorCalibrated:
         district = validated_data['district']
         renovation = validated_data['renovation']
         
-        # Premium districts
+        # Premium districts (based on rental training data)
         premium_districts = {'Универмаг', 'Центр', 'К. Худжанди', 'Исмоили Сомони', 'Кооператор'}
         
-        # Budget districts
+        # Budget districts (based on rental training data)
         budget_districts = {'Пахтакор', 'Шелкокомбинат', 'Панчшанбе', '33 мкр', '34 мкр'}
         
         # Scoring system
@@ -153,7 +161,7 @@ class RentalPricePredictorCalibrated:
         
         # Calculate final multiplier (but cap it to prevent over-adjustment)
         final_multiplier = base_multiplier * district_multiplier * renovation_multiplier * area_multiplier
-        final_multiplier = min(final_multiplier, 2.0)  # Cap at 200% to prevent unrealistic boosts
+        final_multiplier = min(final_multiplier, 1.5)  # Cap at 150% to prevent unrealistic boosts (reduced from 200%)
         
         # Apply calibration
         calibrated_prediction = base_prediction * final_multiplier
@@ -261,7 +269,7 @@ class RentalPricePredictorCalibrated:
             raise
     
     def validate_input(self, property_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Enhanced input validation with better defaults"""
+        """Enhanced input validation with better defaults and district normalization"""
         validated = {}
         
         # Required fields with improved defaults
@@ -269,11 +277,16 @@ class RentalPricePredictorCalibrated:
         validated['area_m2'] = max(20, float(property_data.get('area_m2', 60)))
         validated['floor'] = max(1, int(property_data.get('floor', 3)))
         
-        # String fields with validation
-        validated['district'] = str(property_data.get('district', 'Худжанд')).strip()
+        # String fields with validation and normalization
+        raw_district = str(property_data.get('district', 'Худжанд')).strip()
+        validated['district'] = self._normalize_district_for_prediction(raw_district)
         validated['renovation'] = str(property_data.get('renovation', 'С ремонтом')).strip()
         validated['bathroom'] = str(property_data.get('bathroom', 'Раздельный')).strip()
         validated['heating'] = str(property_data.get('heating', 'Есть')).strip()
+        
+        # Log district normalization if it changed
+        if raw_district != validated['district']:
+            logger.info(f"District normalized: '{raw_district}' → '{validated['district']}'")
         
         return validated
     
@@ -433,12 +446,33 @@ class RentalPricePredictorCalibrated:
             annual_rental_income = calibrated_prediction * 12
             
             # FIXED rental yield calculation (using correct property purchase prices)
+            # Based on actual market data from rental training dataset districts
             property_purchase_prices = {
-                '18 мкр': 6800, '19 мкр': 7200, '20 мкр': 6500, '31 мкр': 6200, '32 мкр': 6300,
-                '33 мкр': 6100, '34 мкр': 6400, 'Универмаг': 7500, 'Центр': 7800,
-                'Панчшанбе': 6000, 'Шелкокомбинат': 5800, 'Пахтакор': 5500,
-                'К. Худжанди': 7000, 'Исмоили Сомони': 7300, 'Кооператор': 6900,
-                'Гулбахор': 6200,
+                # Premium districts
+                'Универмаг': 7500,     # Premium shopping district
+                'Центр': 7800,         # City center
+                'К. Худжанди': 7000,   # Major street
+                'Исмоили Сомони': 7300, # Major avenue
+                'Кооператор': 6900,    # Good residential
+                
+                # Standard microdistricts
+                '18 мкр': 6800,        # Established area
+                '19 мкр': 7200,        # Popular microdistrict
+                '20 мкр': 6500,        # Standard
+                '31 мкр': 6200,        # Baseline
+                '32 мкр': 6300,        # Baseline
+                '33 мкр': 6100,        # Lower demand
+                '34 мкр': 6400,        # Standard
+                
+                # Budget/Industrial districts
+                'Пахтакор': 5500,      # Industrial area
+                'Шелкокомбинат': 5800, # Industrial area
+                'Панчшанбе': 6000,     # Market area
+                'Гулбахор': 6200,      # Standard residential
+                'Анис': 6200,          # Standard area
+                
+                # Default fallback
+                'Худжанд': 6500,       # Market average fallback
             }
             
             district_name = validated_data['district']
@@ -479,6 +513,94 @@ class RentalPricePredictorCalibrated:
         except Exception as e:
             logger.error(f"Error during rental prediction: {e}")
             raise
+
+    def _normalize_district_for_prediction(self, district: str) -> str:
+        """
+        Normalize district names to match the exact standardized names used in rental training data.
+        Uses the same hardcoded mappings as the preprocessing script.
+        """
+        if not district or pd.isna(district):
+            return 'Худжанд'
+        
+        district = str(district).strip()
+        
+        # Hardcoded district mappings based on rental prediction training data
+        district_mappings = {
+            # I. Somoni variations
+            'И.Сомони': 'Исмоили Сомони',
+            'И Сомони': 'Исмоили Сомони',
+            'ул. И. Сомони': 'Исмоили Сомони',
+            'И.Сомони.': 'Исмоили Сомони',
+            'И. Сомони': 'Исмоили Сомони',
+            
+            # Street name variations to district names
+            'ул. К.Худжанди': 'К. Худжанди',
+            'ул.К.Худжанди': 'К. Худжанди',
+            'К.Худжанди': 'К. Худжанди',
+            'ул. Пахтакор': 'Пахтакор',
+            'ул.Пахтакор': 'Пахтакор',
+            'ул. Гагарина': 'Центр',  # Gagarin street is in center
+            'ул.Гагарина': 'Центр',
+            
+            # Anis variations (map to Универмаг district)
+            'магазин Анис': 'Универмаг',
+            'пеши Анис': 'Универмаг',
+            '"Анис': 'Универмаг',  # Quote issue
+            'Анис"': 'Универмаг',
+            'Анис': 'Универмаг',
+            'Анис, нотариус, нац-банк': 'Универмаг',
+            
+            # Common misspellings/variations
+            'центр': 'Центр',
+            'универмаг': 'Универмаг',
+            'кооператор': 'Кооператор',
+            'панчшанбе': 'Панчшанбе',
+            'шелкокомбинат': 'Шелкокомбинат',
+            'пахтакор': 'Пахтакор',
+            
+            # Microdistrict variations
+            '18мкр': '18 мкр',
+            '19мкр': '19 мкр',
+            '20мкр': '20 мкр',
+            '31мкр': '31 мкр',
+            '32мкр': '32 мкр',
+            '33мкр': '33 мкр',
+            '34мкр': '34 мкр',
+            '18 микрорайон': '18 мкр',
+            '19 микрорайон': '19 мкр',
+            '20 микрорайон': '20 мкр',
+            '31 микрорайон': '31 мкр',
+            '32 микрорайон': '32 мкр',
+            '33 микрорайон': '33 мкр',
+            '34 микрорайон': '34 мкр',
+            
+            # Handle problematic districts from analysis
+            'district': 'Худжанд',  # Default fallback
+            '8икр': '8 мкр',  # Typo fix
+            'шёлкамбинот': 'Шелкокомбинат',  # Typo fix
+            'Шелкамбинат': 'Шелкокомбинат',  # Typo fix
+            'маркази чавонон': 'Центр',  # Youth center -> center
+            'Маркази Шахр': 'Центр',  # City center
+            'Загс': 'Центр',  # Civil registry -> center
+            'джума базар': 'Панчшанбе',  # Friday market
+            'Шарк паншанбе': 'Панчшанбе',  # East Friday market
+            'Абрешим': 'Шелкокомбинат',  # Silk area
+            'Бустон (Чкаловск)': 'Худжанд',  # Suburb
+            'Қуш': 'Худжанд',  # Default for Cyrillic variations
+            
+            # Address-like entries mapped to nearest districts
+            'улица Сырдаринская дом 41': 'Сирдарё',
+            'Улица Сырдарьинская': 'Сирдарё',
+            'улица гагарина 110': 'Центр',
+            'проспект Мира ул Сирдаринская 19': 'Сирдарё',
+        }
+        
+        # Apply direct mapping if available
+        if district in district_mappings:
+            return district_mappings[district]
+        
+        # If no direct mapping, return as-is (it should already be standardized)
+        return district
 
 if __name__ == "__main__":
     # Test the CALIBRATED predictor

@@ -259,13 +259,10 @@ def load_district_mapping():
 
 def normalize_district_column(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Enhanced district normalization using YAML-based mapping patterns.
-    Integrates the comprehensive district mapping from rental prediction system.
+    Normalize district names to match the exact standardized names used in rental prediction model.
+    Uses hardcoded mappings based on the rental training data districts.
     """
-    logging.info("Starting enhanced district normalization with YAML mapping")
-    
-    # Load district mapping configuration
-    district_mapping = load_district_mapping()
+    logging.info("Starting district normalization with hardcoded rental data mappings")
     
     # Clean district names first
     df['district'] = df['district'].astype(str).str.strip()
@@ -274,133 +271,256 @@ def normalize_district_column(df: pd.DataFrame) -> pd.DataFrame:
     original_count = len(df['district'].unique())
     logging.info(f"Original district count: {original_count}")
     
-    def standardize_district_with_yaml(district_name):
-        """Apply YAML-based standardization to district names."""
-        if pd.isna(district_name) or district_name == 'nan':
+    # Hardcoded district mappings based on rental prediction training data
+    # These are the exact district names that the rental model expects
+    RENTAL_MODEL_DISTRICTS = {
+        # Major microdistricts (sorted by frequency in rental data)
+        '19 мкр': [
+            r'.*19.*мкр.*', r'.*19.*микр.*', r'.*19.*mkr.*', r'.*19.*мик.*',
+            r'^19$', r'"19.*', r'.*19_мкр.*', r'.*19мкр.*'
+        ],
+        '18 мкр': [
+            r'.*18.*мкр.*', r'.*18.*микр.*', r'.*18.*mkr.*', r'.*18.*мик.*',
+            r'^18$', r'"18.*', r'.*18_мкр.*', r'.*18мкр.*'
+        ],
+        '34 мкр': [
+            r'.*34.*мкр.*', r'.*34.*микр.*', r'.*34.*mkr.*', r'.*34.*мик.*',
+            r'^34$', r'"34.*', r'.*34_мкр.*', r'.*34мкр.*'
+        ],
+        '20 мкр': [
+            r'.*20.*мкр.*', r'.*20.*микр.*', r'.*20.*mkr.*', r'.*20.*мик.*',
+            r'^20$', r'"20.*', r'.*20_мкр.*', r'.*20мкр.*'
+        ],
+        '31 мкр': [
+            r'.*31.*мкр.*', r'.*31.*микр.*', r'.*31.*mkr.*', r'.*31.*мик.*',
+            r'^31$', r'"31.*', r'.*31_мкр.*', r'.*31мкр.*'
+        ],
+        '33 мкр': [
+            r'.*33.*мкр.*', r'.*33.*микр.*', r'.*33.*mkr.*', r'.*33.*мик.*',
+            r'^33$', r'"33.*', r'.*33_мкр.*', r'.*33мкр.*'
+        ],
+        '32 мкр': [
+            r'.*32.*мкр.*', r'.*32.*микр.*', r'.*32.*mkr.*', r'.*32.*мик.*',
+            r'^32$', r'"32.*', r'.*32_мкр.*', r'.*32мкр.*'
+        ],
+        '12 мкр': [
+            r'.*12.*мкр.*', r'.*12.*микр.*', r'.*12.*mkr.*', r'.*12.*мик.*',
+            r'^12$', r'"12.*', r'.*12_мкр.*', r'.*12мкр.*'
+        ],
+        '13 мкр': [
+            r'.*13.*мкр.*', r'.*13.*микр.*', r'.*13.*mkr.*', r'.*13.*мик.*',
+            r'^13$', r'"13.*', r'.*13_мкр.*', r'.*13мкр.*'
+        ],
+        '8 мкр': [
+            r'.*8.*мкр.*', r'.*8.*микр.*', r'.*8.*mkr.*', r'.*8.*мик.*',
+            r'^8$', r'"8.*', r'.*8_мкр.*', r'.*8мкр.*'
+        ],
+        '28 мкр': [
+            r'.*28.*мкр.*', r'.*28.*микр.*', r'.*28.*mkr.*', r'.*28.*мик.*',
+            r'^28$', r'"28.*', r'.*28_мкр.*', r'.*28мкр.*'
+        ],
+        '30 мкр': [
+            r'.*30.*мкр.*', r'.*30.*микр.*', r'.*30.*mkr.*', r'.*30.*мик.*',
+            r'^30$', r'"30.*', r'.*30_мкр.*', r'.*30мкр.*'
+        ],
+        '27 мкр': [
+            r'.*27.*мкр.*', r'.*27.*микр.*', r'.*27.*mkr.*', r'.*27.*мик.*',
+            r'^27$', r'"27.*', r'.*27_мкр.*', r'.*27мкр.*'
+        ],
+        '29 мкр': [
+            r'.*29.*мкр.*', r'.*29.*микр.*', r'.*29.*mkr.*', r'.*29.*мик.*',
+            r'^29$', r'"29.*', r'.*29_мкр.*', r'.*29мкр.*'
+        ],
+        '3 мкр': [
+            r'.*3.*мкр.*', r'.*3.*микр.*', r'.*3.*mkr.*', r'.*3.*мик.*',
+            r'^3$', r'"3.*', r'.*3_мкр.*', r'.*3мкр.*'
+        ],
+        '17 мкр': [
+            r'.*17.*мкр.*', r'.*17.*микр.*', r'.*17.*mkr.*', r'.*17.*мик.*',
+            r'^17$', r'"17.*', r'.*17_мкр.*', r'.*17мкр.*'
+        ],
+        '35 мкр': [
+            r'.*35.*мкр.*', r'.*35.*микр.*', r'.*35.*mkr.*', r'.*35.*мик.*',
+            r'^35$', r'"35.*', r'.*35_мкр.*', r'.*35мкр.*'
+        ],
+        
+        # Major landmarks and areas
+        'Шелкокомбинат': [
+            r'.*ш[её]лк.*комбинат.*', r'.*shelk.*', r'.*шолк.*', r'.*шëлк.*',
+            r'.*sholk.*', r'.*silk.*', r'"шелкокомбинат.*', r'.*гостиница.*эхсон.*'
+        ],
+        'Универмаг': [
+            r'.*универмаг.*', r'.*унвермаг.*', r'.*уневермаг.*', r'.*unvermag.*',
+            r'.*univermag.*', r'"универмаг.*', r'.*магазин.*анис.*', r'.*анис.*универмаг.*', 
+            r'.*авесто.*', r'.*универмаг.*авесто.*', r'.*центр.*', r'.*tsentr.*', r'.*ценр.*', 
+            r'.*авесто.*', r'.*.Анис.*', r'.*.анис.*'
+        ],
+        'Пахтакор': [
+            r'.*пахтакор.*', r'.*pakhtakor.*', r'"пахтакор.*'
+        ],
+        'Панчшанбе': [
+            r'.*панчшанбе.*', r'.*panchshanbe.*', r'.*авиакасса.*', r'.*шарк.*панчшанбе.*',
+            r'.*джума.*базар.*'  # Added джума базар
+        ],
+        'Ватан': [
+            r'.*ватан.*', r'.*vatan.*', r'.*кинотеатр.*ватан.*'
+        ],
+        'Гулбахор': [
+            r'.*гулбахор.*', r'.*gulbakhor.*', r'.*gulbahor.*'
+        ],
+        'Квартал Бахор': [
+            r'.*квартал.*бахор.*', r'.*кв.*бахор.*', r'.*бахор.*квартал.*'
+        ],
+        'Кооператор': [
+            r'.*кооператор.*', r'.*kooperator.*', r'.*капиратор.*', r'.*кооперат.*'
+        ],
+        'Исмоили Сомони': [
+            r'.*исмоили.*сомони.*', r'.*и\.?\s*сомони.*', r'.*и\s+сомони.*',
+            r'.*ул\.?\s*и\.?\s*сомони.*', r'.*сомони.*', r'.*центр.*'
+        ],
+        'Автовокзал': [
+            r'.*автовокзал.*', r'.*автовагзал.*', r'.*автовогзал.*', r'.*спутник.*'
+        ],
+        'Стадион': [
+            r'.*стадион.*спартак.*', r'.*спартак.*стадион.*', r'.*стадиони.*спартак.*',
+            r'^стадион$', r'.*стадион(?!.*спартак).*'
+        ],
+        'Гулистон': [
+            r'.*гулистон.*', r'.*guliston.*'
+        ],
+        'Бахор': [
+            r'^бахор$', r'.*бахор(?!.*квартал).*', r'.*бахар.*'
+        ],
+        'К. Худжанди': [
+            r'.*к\.?\s*худжанди.*', r'.*камоли.*худжанди.*', r'.*камоли.*хучанди.*',
+            r'.*к\.?\s*хучанди.*', r'.*ул\.?\s*к\.?\s*худжанди.*'
+        ],
+        'Кучаи Мир': [
+            r'.*кучаи.*мир.*', r'.*ул\.?\s*мира.*'
+        ],
+        
+        # Special areas
+        'Поликлиника 5': [
+            r'.*поликлиника.*5.*'
+        ],
+        'Гор Больница': [
+            r'.*гор.*больница.*', r'.*городская.*больница.*', r'.*горбольница.*',
+            r'.*гор.*болнитца.*'
+        ],
+        'Консервный Комбинат': [
+            r'.*консервный.*комбинат.*', r'.*консеревный.*комбинат.*'
+        ],
+        'Детская Больница': [
+            r'.*детская.*больница.*'
+        ],
+        'Кайроккум': [
+            r'.*кайроккум.*'
+        ],
+        'Худжанд': [
+            r'^худжанд$'
+        ],
+        'Сирдарё': [
+            r'.*сирдарё.*', r'.*сырдарин.*', r'.*сырдарь.*'
+        ],
+        'Минутка': [
+            r'.*минутка.*'
+        ],
+        'Ягодка': [
+            r'.*ягодка.*'
+        ],
+        
+        # Additional mappings for unmatched districts from analysis
+        'Универмаг': [
+            r'.*универмаг.*', r'.*унвермаг.*', r'.*уневермаг.*', r'.*unvermag.*',
+            r'.*univermag.*', r'"универмаг.*', r'.*магазин.*анис.*', r'.*анис.*универмаг.*', 
+            r'.*авесто.*', r'.*универмаг.*авесто.*', r'.*центр.*', r'.*tsentr.*', r'.*ценр.*', 
+            r'.*авесто.*', r'.*.Анис.*', r'.*.анис.*', r'.*анис.*', r'.*пеши.*анис.*',
+            r'.*анис.*нотариус.*', r'.*анис.*нац.*банк.*'
+        ],
+        'Шелкокомбинат': [
+            r'.*ш[её]лк.*комбинат.*', r'.*shelk.*', r'.*шолк.*', r'.*шëлк.*',
+            r'.*sholk.*', r'.*silk.*', r'"шелкокомбинат.*', r'.*гостиница.*эхсон.*',
+            r'.*шелкамбинат.*', r'.*шёлкамбинот.*'
+        ],
+        'Автовокзал': [
+            r'.*автовокзал.*', r'.*автовагзал.*', r'.*автовогзал.*', r'.*спутник.*'
+        ],
+        # Handle typos and variations found in analysis
+        '8 мкр': [
+            r'.*8.*мкр.*', r'.*8.*микр.*', r'.*8.*mkr.*', r'.*8.*мик.*',
+            r'^8$', r'"8.*', r'.*8_мкр.*', r'.*8мкр.*', r'.*8икр.*'  # Added 8икр typo
+        ],
+        '7 мкр': [
+            r'.*7.*мкр.*', r'.*7.*микр.*', r'.*7.*mkr.*', r'.*7.*мик.*',
+            r'^7$', r'"7.*', r'.*7_мкр.*', r'.*7мкр.*'
+        ],
+        
+        # Handle address-like entries by mapping to nearest known district
+        'Исмоили Сомони': [
+            r'.*исмоили.*сомони.*', r'.*и\.?\s*сомони.*', r'.*и\s+сомони.*',
+            r'.*ул\.?\s*и\.?\s*сомони.*', r'.*сомони.*', r'.*центр.*',
+            r'.*ул.*гагарин.*', r'.*улица.*гагарин.*', r'.*проспект.*мира.*'  # Map Gagarin street to center
+        ],
+        
+        # Administrative areas
+        'Центр': [
+            r'.*загс.*', r'.*маркази.*шахр.*'  # ZAGS and city center
+        ],
+    }
+    
+    def standardize_district_name(district_name):
+        """Apply hardcoded standardization to district names."""
+        if pd.isna(district_name) or str(district_name).strip() in ['nan', 'district', '']:
             return 'Неизвестно'
         
         district = str(district_name).strip().lower()
         
-        if district_mapping:
-            # 1. Microdistricts pattern matching
-            if 'microdistricts' in district_mapping:
-                micro_config = district_mapping['microdistricts']
-                patterns = micro_config.get('patterns', [])
-                valid_range = micro_config.get('valid_range', [1, 50])
-                output_format = micro_config.get('output_format', "{number} мкр")
-                
-                for pattern in patterns:
-                    match = re.search(pattern, district, re.IGNORECASE)
-                    if match:
-                        try:
-                            number = int(match.group(1))
-                            if valid_range[0] <= number <= valid_range[1]:
-                                return output_format.format(number=number)
-                        except (ValueError, IndexError):
-                            continue
-            
-            # 2. Landmarks mapping
-            if 'landmarks' in district_mapping:
-                landmarks = district_mapping['landmarks']
-                
-                # Silk factory
-                if 'silk_factory' in landmarks:
-                    silk_config = landmarks['silk_factory']
-                    for pattern in silk_config.get('patterns', []):
-                        if re.search(pattern, district, re.IGNORECASE):
-                            return silk_config.get('normalized', 'Шелкокомбинат')
-                
-                # Shopping areas
-                if 'shopping' in landmarks:
-                    for shop_key, shop_config in landmarks['shopping'].items():
-                        if isinstance(shop_config, dict) and 'patterns' in shop_config:
-                            for pattern in shop_config['patterns']:
-                                if re.search(pattern, district, re.IGNORECASE):
-                                    return shop_config.get('normalized', shop_key.title())
-            
-            # 3. Residential areas
-            if 'residential' in district_mapping:
-                residential = district_mapping['residential']
-                for res_key, res_config in residential.items():
-                    if isinstance(res_config, dict) and 'patterns' in res_config:
-                        for pattern in res_config['patterns']:
-                            if re.search(pattern, district, re.IGNORECASE):
-                                return res_config.get('normalized', res_key.title())
-            
-            # 4. Districts
-            if 'districts' in district_mapping:
-                districts = district_mapping['districts']
-                for dist_key, dist_config in districts.items():
-                    if isinstance(dist_config, dict) and 'patterns' in dist_config:
-                        for pattern in dist_config['patterns']:
-                            if re.search(pattern, district, re.IGNORECASE):
-                                return dist_config.get('normalized', dist_key.title())
-                
-                # Handle other patterns
-                if 'other' in districts and 'normalized_patterns' in districts['other']:
-                    for item in districts['other']['normalized_patterns']:
-                        pattern = item.get('pattern', '')
-                        normalized = item.get('normalized', '')
-                        if pattern and re.search(pattern, district, re.IGNORECASE):
-                            return normalized
-            
-            # 5. Facilities
-            if 'facilities' in district_mapping:
-                facilities = district_mapping['facilities']
-                for facility_type, facility_data in facilities.items():
-                    for facility_key, facility_config in facility_data.items():
-                        if isinstance(facility_config, dict) and 'patterns' in facility_config:
-                            for pattern in facility_config['patterns']:
-                                if re.search(pattern, district, re.IGNORECASE):
-                                    return facility_config.get('normalized', facility_key.replace('_', ' ').title())
+        # Try to match against each standardized district
+        for standard_name, patterns in RENTAL_MODEL_DISTRICTS.items():
+            for pattern in patterns:
+                if re.search(pattern, district, re.IGNORECASE):
+                    return standard_name
         
-        # Fallback patterns if YAML mapping is not available or no match found
-        return standardize_district_fallback(district_name)
-    
-    def standardize_district_fallback(district_name):
-        """Fallback standardization patterns if YAML mapping fails."""
-        district = str(district_name).strip()
+        # If no match found, try some basic cleanup and return as-is
+        cleaned = str(district_name).strip()
         
-        # Basic microdistrict pattern
-        number_pattern = r'(\d{1,2})'
-        match = re.search(number_pattern, district)
-        if match:
-            number = int(match.group(1))
-            if 7 <= number <= 50:
-                return f"{number} мкр"
+        # Remove quotes and extra characters
+        cleaned = re.sub(r'^["\'"]+|["\'"]+$', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned)
         
-        # Basic landmark patterns
-        basic_mappings = {
-            r'.*ш[её]лк.*': 'Шелкокомбинат',
-            r'.*универмаг.*': 'Универмаг',
-            r'.*панчшанбе.*': 'Панчшанбе',
-            r'.*гулбахор.*': 'Гулбахор',
-            r'.*центр.*': 'Центр',
-            r'.*ватан.*': 'Ватан',
-            r'.*кооператор.*': 'Кооператор',
-            r'.*бахор.*': 'кв. Бахор',
-        }
+        # If it's still empty or just whitespace, mark as unknown
+        if not cleaned or cleaned.isspace():
+            return 'Неизвестно'
         
-        for pattern, standard_name in basic_mappings.items():
-            if re.search(pattern, district, re.IGNORECASE):
-                return standard_name
-        
-        return district
+        return cleaned
     
     # Apply standardization
-    df['district'] = df['district'].apply(standardize_district_with_yaml)
+    df['district'] = df['district'].apply(standardize_district_name)
     
     new_count = len(df['district'].unique())
     reduction = original_count - new_count
     
-    logging.info(f"Enhanced district normalization completed: {original_count} -> {new_count} unique districts")
+    logging.info(f"District normalization completed: {original_count} -> {new_count} unique districts")
     logging.info(f"Reduced district count by: {reduction} ({reduction/original_count*100:.1f}%)")
     
     # Log the final district distribution
     district_counts = df['district'].value_counts()
-    logging.info(f"Top 10 districts after normalization:")
-    for district, count in district_counts.head(10).items():
+    logging.info(f"Top 15 districts after normalization:")
+    for district, count in district_counts.head(15).items():
         logging.info(f"  {district}: {count}")
+    
+    # Check how many districts match the rental model exactly
+    rental_model_districts = set(RENTAL_MODEL_DISTRICTS.keys())
+    final_districts = set(df['district'].unique())
+    matched_districts = rental_model_districts.intersection(final_districts)
+    
+    logging.info(f"Districts matching rental model: {len(matched_districts)}/{len(rental_model_districts)} "
+                f"({len(matched_districts)/len(rental_model_districts)*100:.1f}%)")
+    
+    # Log any districts that don't match the rental model
+    unmatched_districts = final_districts - rental_model_districts - {'Неизвестно'}
+    if unmatched_districts:
+        logging.warning(f"Districts not in rental model ({len(unmatched_districts)}): {sorted(unmatched_districts)}")
     
     return df
 
@@ -431,9 +551,58 @@ def remove_unwanted_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def detect_basement_properties(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Detect basement properties from URL and title patterns and assign floor 0.
+    This prevents basement properties from being incorrectly imputed with median floors.
+    """
+    if 'url' not in df.columns:
+        logging.warning("URL column not found, skipping basement detection")
+        return df
+    
+    initial_missing = df['floor'].isna().sum()
+    basement_count = 0
+    
+    # Patterns that indicate basement properties
+    basement_patterns = [
+        r'tsokolnyi',          # цокольный (basement)
+        r'polutsokolnaia',     # полуцокольная (semi-basement)
+        r'basement',
+        r'подвал',
+        r'цокольн'
+    ]
+    
+    # Create a combined pattern
+    pattern = '|'.join(basement_patterns)
+    
+    # Find basement properties based on URL or title
+    basement_mask = df['url'].str.contains(pattern, case=False, na=False)
+    
+    # Also check ad_number or any other text fields if available
+    if 'ad_number' in df.columns:
+        basement_mask |= df['ad_number'].astype(str).str.contains(pattern, case=False, na=False)
+    
+    # Assign floor 0 to basement properties with missing floors
+    basement_properties = basement_mask & df['floor'].isna()
+    
+    if basement_properties.any():
+        df.loc[basement_properties, 'floor'] = 0
+        basement_count = basement_properties.sum()
+        
+        logging.info(f"Detected and assigned floor 0 to {basement_count} basement properties")
+        
+        # Log some examples
+        basement_examples = df[basement_properties][['url', 'price', 'area_m2', 'district']].head(5)
+        for _, row in basement_examples.iterrows():
+            logging.info(f"  Basement: {row['url'][:50]}... - {row['price']} TJS, {row['area_m2']}m² in {row['district']}")
+    
+    return df
+
+
 def smart_floor_imputation(df: pd.DataFrame) -> pd.DataFrame:
     """
     Intelligent floor imputation using district-based median with fallbacks.
+    First detects basement properties, then imputes remaining missing floors.
     This preserves all properties while maintaining realistic floor values for price comparison.
     """
     if 'floor' not in df.columns:
@@ -447,9 +616,16 @@ def smart_floor_imputation(df: pd.DataFrame) -> pd.DataFrame:
     
     logging.info(f"Starting smart floor imputation for {initial_missing} missing values")
     
-    # Step 1: Fill with district median floor
-    logging.info("Step 1: Filling missing floors with district median")
-    df['floor'] = df.groupby('district')['floor'].transform(lambda x: x.fillna(x.median()))
+    # Step 0: Detect and handle basement properties first
+    df = detect_basement_properties(df)
+    
+    remaining_missing = df['floor'].isna().sum()
+    logging.info(f"After basement detection: {remaining_missing} floors still missing")
+    
+    # Step 1: Fill remaining missing floors with district median floor
+    if remaining_missing > 0:
+        logging.info("Step 1: Filling remaining missing floors with district median")
+        df['floor'] = df.groupby('district')['floor'].transform(lambda x: x.fillna(x.median()))
     
     # Step 2: If district has no floor data, use overall median
     remaining_missing = df['floor'].isna().sum()
@@ -458,9 +634,9 @@ def smart_floor_imputation(df: pd.DataFrame) -> pd.DataFrame:
         logging.info(f"Step 2: Filling {remaining_missing} remaining missing floors with overall median: {overall_median}")
         df['floor'].fillna(overall_median, inplace=True)
     
-    # Step 3: Ensure floors are positive integers
+    # Step 3: Ensure floors are non-negative integers
     df['floor'] = df['floor'].round().astype(int)
-    df.loc[df['floor'] <= 0, 'floor'] = 1  # Ensure minimum floor is 1
+    df.loc[df['floor'] < 0, 'floor'] = 0  # Ensure minimum floor is 0 (basement)
     
     final_missing = df['floor'].isna().sum()
     filled_count = initial_missing - final_missing
@@ -470,11 +646,12 @@ def smart_floor_imputation(df: pd.DataFrame) -> pd.DataFrame:
     logging.info(f"  - Remaining missing: {final_missing}")
     logging.info(f"  - Floor range after imputation: {df['floor'].min()} - {df['floor'].max()}")
     
-    # Log district-wise floor statistics
-    district_floor_stats = df.groupby('district')['floor'].agg(['count', 'median', 'min', 'max']).round(1)
-    logging.info("Floor statistics by district (top 10):")
-    for district, stats in district_floor_stats.head(10).iterrows():
-        logging.info(f"  {district}: count={stats['count']}, median={stats['median']}, range={stats['min']}-{stats['max']}")
+    # Log floor distribution including basements
+    floor_counts = df['floor'].value_counts().sort_index()
+    logging.info("Floor distribution after imputation:")
+    for floor, count in floor_counts.head(10).items():
+        floor_label = "Basement" if floor == 0 else f"Floor {floor}"
+        logging.info(f"  {floor_label}: {count} properties")
     
     return df
 
