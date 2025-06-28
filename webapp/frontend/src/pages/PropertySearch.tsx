@@ -20,6 +20,8 @@ import {
   CircularProgress,
   Alert,
   Pagination,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Search,
@@ -48,7 +50,7 @@ const PropertySearch: React.FC = () => {
     price_max: 2000000,
     area_min: 0,
     area_max: 500,
-    floor_min: 1,
+    floor_min: 0,
     floor_max: 50,
   });
   
@@ -61,11 +63,12 @@ const PropertySearch: React.FC = () => {
   // Form state (will be updated with dynamic ranges)
   const [priceRange, setPriceRange] = useState<number[]>([0, 2000000]);
   const [areaRange, setAreaRange] = useState<number[]>([0, 500]);
-  const [floorRange, setFloorRange] = useState<number[]>([1, 50]);
+  const [floorRange, setFloorRange] = useState<number[]>([0, 50]);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
   const [selectedBuildStates, setSelectedBuildStates] = useState<string[]>([]);
   const [selectedRenovations, setSelectedRenovations] = useState<string[]>([]);
   const [selectedBargainCategories, setSelectedBargainCategories] = useState<string[]>([]);
+  const [excludeBasement, setExcludeBasement] = useState<boolean>(true);
 
   // Load initial data
   useEffect(() => {
@@ -129,7 +132,14 @@ const PropertySearch: React.FC = () => {
       const data = await apiService.searchProperties(searchFilters);
       console.log('Received properties:', data?.length || 0);
       console.log('First property sample:', data[0]);
-      setProperties(data);
+      
+      // Filter out basement properties if excludeBasement is true
+      const filteredData = excludeBasement 
+        ? data.filter(property => property.floor !== 0)
+        : data;
+      
+      console.log(`🏠 PropertySearch: Filtered ${data.length} → ${filteredData.length} properties (basement excluded: ${excludeBasement})`);
+      setProperties(filteredData);
       
       // Calculate total pages based on whether we got a full page or not
       // If we got less than itemsPerPage, we're on the last page
@@ -152,13 +162,15 @@ const PropertySearch: React.FC = () => {
     }
   }, [
     page, 
-    itemsPerPage,    priceRange,
+    itemsPerPage,
+    priceRange,
     areaRange,
     floorRange,
     selectedDistricts,
     selectedBuildStates,
     selectedRenovations,
-    selectedBargainCategories
+    selectedBargainCategories,
+    excludeBasement
   ]);
 
   // Initial search - only after ranges are loaded
@@ -190,6 +202,7 @@ const PropertySearch: React.FC = () => {
     selectedBuildStates,
     selectedRenovations,
     selectedBargainCategories,
+    excludeBasement,
     filterRanges.price_max, // Add this dependency to trigger search after ranges load
   ]);
 
@@ -201,6 +214,7 @@ const PropertySearch: React.FC = () => {
     setSelectedBuildStates([]);
     setSelectedRenovations([]);
     setSelectedBargainCategories([]);
+    setExcludeBasement(true); // Reset to default (exclude basements)
   }, [filterRanges]);
 
   const handleFavorite = useCallback((property: Property) => {
@@ -225,6 +239,7 @@ const PropertySearch: React.FC = () => {
     if (selectedBuildStates.length > 0) count++;
     if (selectedRenovations.length > 0) count++;
     if (selectedBargainCategories.length > 0) count++;
+    if (excludeBasement) count++; // Count basement exclusion as an active filter
     return count;
   }, [
     priceRange,
@@ -234,6 +249,7 @@ const PropertySearch: React.FC = () => {
     selectedBuildStates,
     selectedRenovations,
     selectedBargainCategories,
+    excludeBasement,
     filterRanges,
   ]);
 
@@ -365,6 +381,31 @@ const PropertySearch: React.FC = () => {
                       min={filterRanges.floor_min}
                       max={filterRanges.floor_max}
                       step={1}
+                      valueLabelFormat={(value) => value === 0 ? 'Basement' : `Floor ${value}`}
+                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, mb: 2 }}>
+                      <Typography variant="caption">
+                        {floorRange[0] === 0 ? 'Basement' : `Floor ${floorRange[0]}`}
+                      </Typography>
+                      <Typography variant="caption">
+                        {floorRange[1] === 0 ? 'Basement' : `Floor ${floorRange[1]}`}
+                      </Typography>
+                    </Box>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={excludeBasement}
+                          onChange={(e) => setExcludeBasement(e.target.checked)}
+                          color="primary"
+                        />
+                      }
+                      label="Exclude Basement Properties"
+                      sx={{ 
+                        '& .MuiFormControlLabel-label': { 
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                        }
+                      }}
                     />
                   </Box>
                 </AccordionDetails>

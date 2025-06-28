@@ -179,9 +179,16 @@ def calculate_improved_bargain_score(df: pd.DataFrame, use_category_aware: bool 
         if 'floor_preference_score' in df.columns:
             quality_components.append(df['floor_preference_score'] * 0.1)
         
+        # Additional basement penalty for target audience preferences
+        basement_penalty = 0
+        if 'floor' in df.columns:
+            # Apply very strong penalty for basement properties (floor 0)
+            # Target audience strongly disfavors basements due to resale, lifestyle, and investment concerns
+            basement_penalty = np.where(df['floor'] == 0, -0.25, 0)  # 25% penalty for basements
+        
         # Combine and ensure 0-1 range
         if quality_components:
-            total_quality = sum(quality_components)
+            total_quality = sum(quality_components) + basement_penalty
             return np.clip(total_quality, 0, 1)
         else:
             return pd.Series(0.5, index=df.index)  # Neutral score if no data

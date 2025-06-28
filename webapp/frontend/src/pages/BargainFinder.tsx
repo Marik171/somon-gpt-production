@@ -14,6 +14,8 @@ import {
   Alert,
   Chip,
   Button,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -30,6 +32,7 @@ const BargainFinder: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<string>('all');
   const [limit, setLimit] = useState<number>(20);
+  const [excludeBasement, setExcludeBasement] = useState<boolean>(true);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
   const fetchBargains = async () => {
@@ -40,7 +43,14 @@ const BargainFinder: React.FC = () => {
       const data = await apiService.getBargainProperties(category, limit);
       console.log('✅ BargainFinder: Received bargain properties:', data?.length || 0);
       console.log('First bargain sample:', data[0]);
-      setProperties(data);
+      
+      // Filter out basement properties if excludeBasement is true
+      const filteredData = excludeBasement 
+        ? data.filter(property => property.floor !== 0)
+        : data;
+      
+      console.log(`🏠 BargainFinder: Filtered ${data.length} → ${filteredData.length} properties (basement excluded: ${excludeBasement})`);
+      setProperties(filteredData);
     } catch (err) {
       console.error('❌ BargainFinder: Error fetching bargains:', err);
       setError('Failed to load bargain properties. Please try again.');
@@ -51,7 +61,7 @@ const BargainFinder: React.FC = () => {
 
   useEffect(() => {
     fetchBargains();
-  }, [category, limit]);
+  }, [category, limit, excludeBasement]);
 
   const handleFavorite = (property: Property) => {
     if (!property.id) return;
@@ -134,7 +144,7 @@ const BargainFinder: React.FC = () => {
         </Box>
         
         <Grid container spacing={3} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
@@ -151,7 +161,7 @@ const BargainFinder: React.FC = () => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Show</InputLabel>
               <Select
@@ -168,7 +178,26 @@ const BargainFinder: React.FC = () => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={excludeBasement}
+                  onChange={(e) => setExcludeBasement(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Exclude Basement Properties"
+              sx={{ 
+                '& .MuiFormControlLabel-label': { 
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                }
+              }}
+            />
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
             <Button
               variant="outlined"
               fullWidth
