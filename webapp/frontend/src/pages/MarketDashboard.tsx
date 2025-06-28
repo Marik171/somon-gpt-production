@@ -327,7 +327,7 @@ const MarketDashboard: React.FC = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
+      <Box sx={{ textAlign: 'center', mb: { xs: 2, sm: 4 } }}>
         <Typography
           variant="h2"
           sx={{
@@ -337,13 +337,24 @@ const MarketDashboard: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 2,
+            gap: { xs: 1, sm: 2 },
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
+            flexDirection: { xs: 'column', sm: 'row' }
           }}
         >
-          <DashboardIcon sx={{ fontSize: 48 }} />
+          <DashboardIcon sx={{ fontSize: { xs: 32, sm: 40, md: 48 } }} />
           Market Analytics Dashboard
         </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 800, mx: 'auto' }}>
+        <Typography 
+          variant="h6" 
+          color="text.secondary" 
+          sx={{ 
+            maxWidth: 800, 
+            mx: 'auto',
+            fontSize: { xs: '0.9rem', sm: '1rem', md: '1.25rem' },
+            px: { xs: 2, sm: 0 }
+          }}
+        >
           Comprehensive market insights and trends for Tajikistan real estate
         </Typography>
       </Box>
@@ -366,50 +377,118 @@ const MarketDashboard: React.FC = () => {
       {marketStats && !loading && !error && (
         <>
           {/* Key Metrics */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid item xs={6} md={3}>
-              <Card sx={{ textAlign: 'center', p: 2, bgcolor: 'primary.50' }}>
-                <Home sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              <Card sx={{ 
+                textAlign: 'center', 
+                p: { xs: 1, sm: 2 }, 
+                bgcolor: 'primary.50',
+                minHeight: { xs: 120, sm: 140 }
+              }}>
+                <Home sx={{ fontSize: { xs: 24, sm: 32 }, color: 'primary.main', mb: 1 }} />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    color: 'primary.main',
+                    fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}
+                >
                   {formatNumber(marketStats.total_listings)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Total Listings
                 </Typography>
               </Card>
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ textAlign: 'center', p: 2, bgcolor: 'success.50' }}>
-                <AttachMoney sx={{ fontSize: 32, color: 'success.main', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main' }}>
+              <Card sx={{ 
+                textAlign: 'center', 
+                p: { xs: 1, sm: 2 }, 
+                bgcolor: 'success.50',
+                minHeight: { xs: 120, sm: 140 }
+              }}>
+                <AttachMoney sx={{ fontSize: { xs: 24, sm: 32 }, color: 'success.main', mb: 1 }} />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    color: 'success.main',
+                    fontSize: { xs: '0.9rem', sm: '1.2rem', md: '1.5rem' },
+                    lineHeight: 1.2
+                  }}
+                >
                   {formatPrice(marketStats.avg_price)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Average Price
                 </Typography>
               </Card>
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.50' }}>
-                <TrendingUp sx={{ fontSize: 32, color: 'warning.main', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'warning.main' }}>
+              <Card sx={{ 
+                textAlign: 'center', 
+                p: { xs: 1, sm: 2 }, 
+                bgcolor: 'warning.50',
+                minHeight: { xs: 120, sm: 140 }
+              }}>
+                <TrendingUp sx={{ fontSize: { xs: 24, sm: 32 }, color: 'warning.main', mb: 1 }} />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    color: 'warning.main',
+                    fontSize: { xs: '1.1rem', sm: '1.5rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}
+                >
                   {formatNumber(marketStats.total_bargains)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Investment Opportunities
                 </Typography>
               </Card>
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ textAlign: 'center', p: 2, bgcolor: 'info.50' }}>
-                <LocationOn sx={{ fontSize: 32, color: 'info.main', mb: 1 }} />
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'info.main' }}>
+              <Card sx={{ 
+                textAlign: 'center', 
+                p: { xs: 1, sm: 2 }, 
+                bgcolor: 'info.50',
+                minHeight: { xs: 120, sm: 140 }
+              }}>
+                <LocationOn sx={{ fontSize: { xs: 24, sm: 32 }, color: 'info.main', mb: 1 }} />
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    color: 'info.main',
+                    fontSize: { xs: '0.9rem', sm: '1.2rem', md: '1.5rem' },
+                    lineHeight: 1.2
+                  }}
+                >
                   {formatPrice(marketStats.median_price)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Median Price
                 </Typography>
               </Card>
@@ -417,7 +496,7 @@ const MarketDashboard: React.FC = () => {
           </Grid>
 
           {/* Charts */}
-          <Grid container spacing={4}>
+          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
             {/* Price Distribution Chart - Keep as bar chart but with better styling */}
             <Grid item xs={12} lg={6}>
               <Card>
@@ -425,7 +504,7 @@ const MarketDashboard: React.FC = () => {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Price Distribution
                   </Typography>
-                  <Box sx={{ height: 400 }}>
+                  <Box sx={{ height: { xs: 300, sm: 400 } }}>
                     {priceDistribution.x.length > 0 ? (
                       <Plot
                         data={[
@@ -444,14 +523,16 @@ const MarketDashboard: React.FC = () => {
                         ]}
                         layout={{
                           xaxis: {
-                            title: { text: 'Price Range' },
+                            title: { text: 'Price Range', font: { size: 10 } },
                             tickangle: -45,
+                            tickfont: { size: 8 },
                           },
                           yaxis: {
-                            title: { text: 'Number of Properties' },
+                            title: { text: 'Number of Properties', font: { size: 10 } },
+                            tickfont: { size: 8 },
                           },
-                          margin: { t: 20, r: 20, b: 80, l: 60 },
-                          font: { size: 12 },
+                          margin: { t: 20, r: 20, b: 100, l: 50 },
+                          font: { size: 10 },
                           bargap: 0.1,
                         }}
                         config={{
@@ -479,7 +560,7 @@ const MarketDashboard: React.FC = () => {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Best Investment Districts
                   </Typography>
-                  <Box sx={{ height: 400 }}>
+                  <Box sx={{ height: { xs: 300, sm: 400 } }}>
                     {bestInvestmentDistricts.labels.length > 0 ? (
                       <Plot
                         data={[
@@ -502,15 +583,17 @@ const MarketDashboard: React.FC = () => {
                         ]}
                         layout={{
                           xaxis: {
-                            title: { text: 'Investment Score (0-1)' },
+                            title: { text: 'Investment Score (0-1)', font: { size: 10 } },
                             range: [0, Math.max(...bestInvestmentDistricts.values) * 1.1],
+                            tickfont: { size: 8 },
                           },
                           yaxis: {
-                            title: { text: 'District' },
+                            title: { text: 'District', font: { size: 10 } },
                             automargin: true,
+                            tickfont: { size: 8 },
                           },
-                          margin: { t: 20, r: 20, b: 40, l: 120 },
-                          font: { size: 12 },
+                          margin: { t: 20, r: 20, b: 40, l: 100 },
+                          font: { size: 10 },
                         }}
                         config={{
                           displayModeBar: false,

@@ -721,7 +721,7 @@ def main():
     scheduler = EnhancedDailyScheduler()
     
     # Schedule daily tasks
-    schedule.every().day.at("22:53").do(scheduler.run_daily_tasks)  # 9:54 PM daily
+    schedule.every().day.at("23:00").do(scheduler.run_daily_tasks)  # 9:54 PM daily
     
     logger.info("🕒 Enhanced Daily Scheduler started!")
     logger.info("⏰ Tasks scheduled for 10:50 PM daily")

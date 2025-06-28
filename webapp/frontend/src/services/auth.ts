@@ -178,12 +178,16 @@ import { useState, useEffect } from 'react';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(authService.getUser());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+
+  // Force re-render when auth state changes
+  const [authVersion, setAuthVersion] = useState(0);
 
   useEffect(() => {
     // Check authentication status on mount
     const checkAuth = async () => {
+      setIsLoading(true);
       if (authService.isAuthenticated() && !authService.isTokenExpired()) {
         try {
           const currentUser = await authService.getCurrentUser();
@@ -197,10 +201,26 @@ export function useAuth() {
         setUser(null);
         setIsAuthenticated(false);
       }
+      setIsLoading(false);
     };
 
     checkAuth();
-  }, []);
+
+    // Listen for storage changes (e.g., login in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'real_estate_token' || e.key === 'real_estate_user') {
+        setUser(authService.getUser());
+        setIsAuthenticated(authService.isAuthenticated());
+        setAuthVersion(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [authVersion]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -208,6 +228,7 @@ export function useAuth() {
       const response = await authService.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
+      setAuthVersion(prev => prev + 1); // Force re-render
       return response;
     } catch (error) {
       setUser(null);
@@ -234,6 +255,7 @@ export function useAuth() {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    setAuthVersion(prev => prev + 1); // Force re-render
   };
 
   return {

@@ -743,12 +743,18 @@ def calculate_bargain_score(df: pd.DataFrame) -> pd.DataFrame:
     try:
         from improved_bargain_algorithm import calculate_improved_bargain_score
         
-        # Use the improved algorithm
-        df_with_improved = calculate_improved_bargain_score(df)
+        # Use the improved algorithm with category-aware classification
+        df_with_improved = calculate_improved_bargain_score(df, use_category_aware=True)
         
         # Copy improved scores to main columns (for backward compatibility)
         df['bargain_score'] = df_with_improved['improved_bargain_score']
         df['bargain_category'] = df_with_improved['improved_bargain_category']
+        
+        # Copy category-aware specific fields
+        if 'renovation_category' in df_with_improved.columns:
+            df['renovation_category'] = df_with_improved['renovation_category']
+        if 'global_bargain_category' in df_with_improved.columns:
+            df['global_bargain_category'] = df_with_improved['global_bargain_category']
         
         # Also keep the component scores for analysis
         component_cols = [col for col in df_with_improved.columns if col.startswith('improved_')]

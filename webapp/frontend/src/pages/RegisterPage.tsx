@@ -1,8 +1,17 @@
 import React from 'react';
 import { Container, Paper, Box, Typography } from '@mui/material';
+import { Navigate } from 'react-router-dom';
 import RegisterForm from '../components/auth/RegisterForm';
+import { useAuth } from '../services/auth';
 
 const RegisterPage: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+
+  // Redirect to home if already authenticated
+  if (isAuthenticated && user) {
+    return <Navigate to="/home" replace />;
+  }
+
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Paper elevation={3} sx={{ p: 4 }}>

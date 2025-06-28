@@ -259,6 +259,8 @@ class PropertyResponse(BaseModel):
     price_difference_percentage: Optional[float]
     bargain_score: Optional[float]
     bargain_category: Optional[str]
+    renovation_category: Optional[str] = None
+    global_bargain_category: Optional[str] = None
     is_favorite: bool = False
     view_count: int = 0
     # Investment analysis fields
@@ -1255,6 +1257,8 @@ async def search_properties(
                     price_difference_percentage=safe_get_row_value(row, 'price_difference_percentage'),
                     bargain_score=safe_get_row_value(row, 'bargain_score'),
                     bargain_category=safe_get_row_value(row, 'enhanced_bargain_category') or safe_get_row_value(row, 'bargain_category'),  # Prefer enhanced category
+                    renovation_category=safe_get_row_value(row, 'renovation_category'),
+                    global_bargain_category=safe_get_row_value(row, 'global_bargain_category'),
                     is_favorite=row['id'] in user_favorites,
                     view_count=safe_get_row_value(row, 'view_count', 0),
                     # Investment analysis fields
@@ -1496,6 +1500,8 @@ async def get_property_detail(property_id: int, current_user: Optional[UserInDB]
         price_difference_percentage=safe_get_row_value(row, 'price_difference_percentage'),
         bargain_score=safe_get_row_value(row, 'bargain_score'),
         bargain_category=safe_get_row_value(row, 'enhanced_bargain_category', safe_get_row_value(row, 'bargain_category')),
+        renovation_category=safe_get_row_value(row, 'renovation_category'),
+        global_bargain_category=safe_get_row_value(row, 'global_bargain_category'),
         is_favorite=is_favorite,
         view_count=safe_get_row_value(row, 'view_count', 0),
         # Investment analysis fields
@@ -1734,6 +1740,8 @@ async def get_favorites(current_user: UserInDB = Depends(get_current_active_user
             price_difference_percentage=safe_get_row_value(row, 'price_difference_percentage'),
             bargain_score=safe_get_row_value(row, 'bargain_score'),
             bargain_category=safe_get_row_value(row, 'bargain_category'),
+            renovation_category=safe_get_row_value(row, 'renovation_category'),
+            global_bargain_category=safe_get_row_value(row, 'global_bargain_category'),
             is_favorite=True,
             view_count=safe_get_row_value(row, 'view_count', 0),
             # Investment analysis fields
@@ -1990,6 +1998,8 @@ async def get_bargains(
                 price_difference_percentage=safe_get_row_value(row, 'price_difference_percentage'),
                 bargain_score=safe_get_row_value(row, 'bargain_score'),
                 bargain_category=safe_get_row_value(row, 'enhanced_bargain_category') or safe_get_row_value(row, 'bargain_category'),  # Prefer enhanced category
+                renovation_category=safe_get_row_value(row, 'renovation_category'),
+                global_bargain_category=safe_get_row_value(row, 'global_bargain_category'),
                 is_favorite=row['id'] in user_favorites,
                 view_count=safe_get_row_value(row, 'view_count', 0),
                 # Investment analysis fields

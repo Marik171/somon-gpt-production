@@ -8,6 +8,7 @@ import { Box } from '@mui/material';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import AuthRedirect from './components/auth/AuthRedirect';
 import HomePage from './pages/HomePage';
 import BargainFinder from './pages/BargainFinder';
 import MarketDashboard from './pages/MarketDashboard';
@@ -73,8 +74,10 @@ function App() {
           <Navbar />
           <Box component="main" sx={{ flexGrow: 1, pt: 2 }}>
             <Routes>
+              {/* Root route with authentication check */}
+              <Route path="/" element={<AuthRedirect />} />
+              
               {/* Public routes */}
-              <Route path="/" element={<LoginPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               

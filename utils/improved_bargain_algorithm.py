@@ -20,19 +20,121 @@ from typing import Dict, Any, Tuple
 # Set up logging
 logger = logging.getLogger(__name__)
 
-def calculate_improved_bargain_score(df: pd.DataFrame) -> pd.DataFrame:
+def standardize_renovation_category(build_state):
     """
-    Calculate improved bargain scores addressing current algorithm issues.
+    Standardize renovation categories from somon.tj data.
+    
+    Args:
+        build_state: The build_state field value
+        
+    Returns:
+        Standardized category string
+    """
+    if pd.isna(build_state):
+        return 'unknown'
+    
+    value = str(build_state).strip()
+    
+    # Handle empty strings
+    if not value:
+        return 'unknown'
+    
+    if value == "Без ремонта (коробка)":
+        return 'shell'
+    elif value == "С ремонтом":
+        return 'standard_renovation'  
+    elif value == "Новый ремонт":
+        return 'new_renovation'
+    else:
+        return 'other'
+
+def calculate_category_aware_thresholds(df: pd.DataFrame, score_column: str) -> Dict[str, Dict[str, float]]:
+    """
+    Calculate bargain thresholds within each renovation category.
+    
+    Args:
+        df: DataFrame with bargain scores and renovation categories
+        score_column: Name of the score column to use
+        
+    Returns:
+        Dictionary of thresholds for each renovation category
+    """
+    logger.info("🏗️ Calculating category-specific bargain thresholds...")
+    
+    renovation_categories = df['renovation_category'].unique()
+    category_thresholds = {}
+    min_sample_size = 5
+    
+    for category in renovation_categories:
+        category_data = df[df['renovation_category'] == category]
+        
+        if len(category_data) < min_sample_size:
+            logger.warning(f"Insufficient data for {category}: {len(category_data)} properties")
+            # Use global thresholds as fallback
+            scores = df[score_column]
+            category_thresholds[category] = {
+                'exceptional_opportunity': scores.quantile(0.90),
+                'excellent_bargain': scores.quantile(0.75),
+                'good_bargain': scores.quantile(0.50),
+                'fair_value': scores.quantile(0.25)
+            }
+            continue
+        
+        # Calculate category-specific thresholds
+        scores = category_data[score_column]
+        thresholds = {
+            'exceptional_opportunity': scores.quantile(0.90),  # Top 10% within category
+            'excellent_bargain': scores.quantile(0.75),        # Top 25% within category  
+            'good_bargain': scores.quantile(0.50),             # Top 50% within category
+            'fair_value': scores.quantile(0.25),               # Top 75% within category
+        }
+        
+        # Ensure minimum separation
+        min_separation = 0.03
+        for i, (cat_name, threshold) in enumerate(list(thresholds.items())[1:], 1):
+            prev_threshold = list(thresholds.values())[i-1]
+            if threshold > prev_threshold - min_separation:
+                thresholds[cat_name] = prev_threshold - min_separation
+        
+        category_thresholds[category] = thresholds
+        
+        logger.info(f"✅ {category}: {len(category_data)} properties, "
+                   f"excellent threshold: {thresholds['excellent_bargain']:.3f}")
+    
+    return category_thresholds
+
+def calculate_improved_bargain_score(df: pd.DataFrame, use_category_aware: bool = True) -> pd.DataFrame:
+    """
+    Calculate improved bargain scores with optional category-aware classification.
     
     Args:
         df: DataFrame with property data including existing features
+        use_category_aware: Whether to use category-specific thresholds
         
     Returns:
         DataFrame with improved bargain scores and categories
     """
     logger.info("🎯 Calculating improved bargain scores...")
+    if use_category_aware:
+        logger.info("🏗️ Using category-aware bargain classification")
     
     df_result = df.copy()
+    
+    # Add renovation categories
+    renovation_col = None
+    possible_cols = ['build_state', 'renovation', 'condition', 'build_condition']
+    
+    for col in possible_cols:
+        if col in df_result.columns:
+            renovation_col = col
+            break
+    
+    if renovation_col:
+        df_result['renovation_category'] = df_result[renovation_col].apply(standardize_renovation_category)
+        logger.info(f"📊 Renovation categories found: {df_result['renovation_category'].value_counts().to_dict()}")
+    else:
+        logger.warning("No renovation category column found, using 'unknown'")
+        df_result['renovation_category'] = 'unknown'
     
     # 1. IMPROVED PRICE ADVANTAGE CALCULATION
     # Fix the mathematical issues in price advantage scoring
@@ -150,92 +252,141 @@ def calculate_improved_bargain_score(df: pd.DataFrame) -> pd.DataFrame:
     
     df_result['improved_bargain_score'] = np.clip(improved_score, 0, 1)
     
-    # 7. CALCULATE ADAPTIVE THRESHOLDS
-    # Use data-driven thresholds instead of fixed values
-    score_percentiles = df_result['improved_bargain_score'].quantile([0.90, 0.75, 0.50, 0.25])
-    
-    adaptive_thresholds = {
-        'exceptional_opportunity': score_percentiles[0.90],  # Top 10%
-        'excellent_bargain': score_percentiles[0.75],        # Top 25%
-        'good_bargain': score_percentiles[0.50],             # Top 50%
-        'fair_value': score_percentiles[0.25],               # Top 75%
-        # Bottom 25% will be market_price or overpriced
-    }
-    
-    # Ensure minimum separation between thresholds
-    min_gap = 0.03
-    if adaptive_thresholds['excellent_bargain'] > adaptive_thresholds['exceptional_opportunity'] - min_gap:
-        adaptive_thresholds['excellent_bargain'] = adaptive_thresholds['exceptional_opportunity'] - min_gap
-    if adaptive_thresholds['good_bargain'] > adaptive_thresholds['excellent_bargain'] - min_gap:
-        adaptive_thresholds['good_bargain'] = adaptive_thresholds['excellent_bargain'] - min_gap
-    if adaptive_thresholds['fair_value'] > adaptive_thresholds['good_bargain'] - min_gap:
-        adaptive_thresholds['fair_value'] = adaptive_thresholds['good_bargain'] - min_gap
-    
-    # 8. CATEGORIZE WITH ADAPTIVE THRESHOLDS
-    def categorize_improved_bargain(score):
-        if score >= adaptive_thresholds['exceptional_opportunity']:
-            return 'exceptional_opportunity'
-        elif score >= adaptive_thresholds['excellent_bargain']:
-            return 'excellent_bargain'
-        elif score >= adaptive_thresholds['good_bargain']:
-            return 'good_bargain'
-        elif score >= adaptive_thresholds['fair_value']:
-            return 'fair_value'
-        elif score >= 0.4:  # Fixed threshold for market price
-            return 'market_price'
-        else:
-            return 'overpriced'
-    
-    df_result['improved_bargain_category'] = df_result['improved_bargain_score'].apply(categorize_improved_bargain)
-    
+    # 7. CALCULATE THRESHOLDS (GLOBAL OR CATEGORY-AWARE)
+    if use_category_aware and len(df_result['renovation_category'].unique()) > 1:
+        # Calculate category-specific thresholds
+        category_thresholds = calculate_category_aware_thresholds(df_result, 'improved_bargain_score')
+        
+        # 8. CATEGORIZE WITH CATEGORY-AWARE THRESHOLDS
+        def categorize_category_aware_bargain(row):
+            score = row['improved_bargain_score']
+            renovation_cat = row['renovation_category']
+            
+            if renovation_cat not in category_thresholds:
+                # Fallback to global categorization
+                return categorize_global_bargain(score, df_result['improved_bargain_score'])
+            
+            thresholds = category_thresholds[renovation_cat]
+            
+            if score >= thresholds['exceptional_opportunity']:
+                return 'exceptional_opportunity'
+            elif score >= thresholds['excellent_bargain']:
+                return 'excellent_bargain'
+            elif score >= thresholds['good_bargain']:
+                return 'good_bargain'
+            elif score >= thresholds['fair_value']:
+                return 'fair_value'
+            elif score >= 0.4:  # Fixed threshold for market price
+                return 'market_price'
+            else:
+                return 'overpriced'
+        
+        df_result['improved_bargain_category'] = df_result.apply(categorize_category_aware_bargain, axis=1)
+        
+        # Keep global classification for comparison
+        score_percentiles = df_result['improved_bargain_score'].quantile([0.90, 0.75, 0.50, 0.25])
+        global_thresholds = {
+            'exceptional_opportunity': score_percentiles[0.90],
+            'excellent_bargain': score_percentiles[0.75],
+            'good_bargain': score_percentiles[0.50],
+            'fair_value': score_percentiles[0.25]
+        }
+        
+        def categorize_global_bargain_row(score):
+            return categorize_global_bargain(score, df_result['improved_bargain_score'])
+        
+        df_result['global_bargain_category'] = df_result['improved_bargain_score'].apply(categorize_global_bargain_row)
+        
+    else:
+        # Use global thresholds (original behavior)
+        score_percentiles = df_result['improved_bargain_score'].quantile([0.90, 0.75, 0.50, 0.25])
+        
+        adaptive_thresholds = {
+            'exceptional_opportunity': score_percentiles[0.90],  # Top 10%
+            'excellent_bargain': score_percentiles[0.75],        # Top 25%
+            'good_bargain': score_percentiles[0.50],             # Top 50%
+            'fair_value': score_percentiles[0.25],               # Top 75%
+        }
+        
+        # Ensure minimum separation between thresholds
+        min_gap = 0.03
+        if adaptive_thresholds['excellent_bargain'] > adaptive_thresholds['exceptional_opportunity'] - min_gap:
+            adaptive_thresholds['excellent_bargain'] = adaptive_thresholds['exceptional_opportunity'] - min_gap
+        if adaptive_thresholds['good_bargain'] > adaptive_thresholds['excellent_bargain'] - min_gap:
+            adaptive_thresholds['good_bargain'] = adaptive_thresholds['excellent_bargain'] - min_gap
+        if adaptive_thresholds['fair_value'] > adaptive_thresholds['good_bargain'] - min_gap:
+            adaptive_thresholds['fair_value'] = adaptive_thresholds['good_bargain'] - min_gap
+        
+        # 8. CATEGORIZE WITH GLOBAL THRESHOLDS
+        def categorize_improved_bargain(score):
+            if score >= adaptive_thresholds['exceptional_opportunity']:
+                return 'exceptional_opportunity'
+            elif score >= adaptive_thresholds['excellent_bargain']:
+                return 'excellent_bargain'
+            elif score >= adaptive_thresholds['good_bargain']:
+                return 'good_bargain'
+            elif score >= adaptive_thresholds['fair_value']:
+                return 'fair_value'
+            elif score >= 0.4:  # Fixed threshold for market price
+                return 'market_price'
+            else:
+                return 'overpriced'
+        
+        df_result['improved_bargain_category'] = df_result['improved_bargain_score'].apply(categorize_improved_bargain)
+        df_result['global_bargain_category'] = df_result['improved_bargain_category']  # Same as category-aware when global
+
     # 9. LOG ANALYSIS RESULTS
     logger.info("📈 Improved Bargain Analysis Results:")
     
-    # Compare old vs new distributions
-    if 'bargain_category' in df.columns:
-        old_dist = df['bargain_category'].value_counts()
-        new_dist = df_result['improved_bargain_category'].value_counts()
+    # Show category-aware vs global comparison if using category-aware
+    if use_category_aware and 'global_bargain_category' in df_result.columns:
+        logger.info("\n🏗️ Category-Aware vs Global Comparison:")
         
-        logger.info("Category Distribution Comparison:")
-        all_categories = set(old_dist.index) | set(new_dist.index)
-        for category in sorted(all_categories):
-            old_count = old_dist.get(category, 0)
-            new_count = new_dist.get(category, 0)
-            old_pct = (old_count / len(df)) * 100
-            new_pct = (new_count / len(df_result)) * 100
-            logger.info(f"  {category}: {old_count} ({old_pct:.1f}%) → {new_count} ({new_pct:.1f}%)")
-    
-    # Log adaptive thresholds
-    logger.info("Adaptive Thresholds Used:")
-    for category, threshold in adaptive_thresholds.items():
-        logger.info(f"  {category}: {threshold:.3f}")
-    
-    # Log score improvement
-    if 'bargain_score' in df.columns:
-        old_mean = df['bargain_score'].mean()
-        new_mean = df_result['improved_bargain_score'].mean()
-        old_std = df['bargain_score'].std()
-        new_std = df_result['improved_bargain_score'].std()
+        # Overall distribution
+        logger.info("\nCategory-Aware Distribution:")
+        category_dist = df_result['improved_bargain_category'].value_counts()
+        total = len(df_result)
+        for category, count in category_dist.items():
+            percentage = (count / total) * 100
+            logger.info(f"  {category}: {count} properties ({percentage:.1f}%)")
         
-        logger.info(f"Score Statistics:")
-        logger.info(f"  Mean: {old_mean:.3f} → {new_mean:.3f}")
-        logger.info(f"  Std:  {old_std:.3f} → {new_std:.3f}")
-    
-    # Log top improved bargains
-    top_bargains = df_result.nlargest(5, 'improved_bargain_score')
-    logger.info("Top 5 Improved Bargain Properties:")
-    for _, row in top_bargains.iterrows():
-        district = row.get('district', 'N/A')
-        price = row.get('price', 0)
-        area = row.get('area_m2', 0)
-        old_score = row.get('bargain_score', 0)
-        new_score = row['improved_bargain_score']
-        new_category = row['improved_bargain_category']
+        logger.info("\nGlobal Distribution:")
+        global_dist = df_result['global_bargain_category'].value_counts()
+        for category, count in global_dist.items():
+            percentage = (count / total) * 100
+            logger.info(f"  {category}: {count} properties ({percentage:.1f}%)")
         
-        logger.info(f"  {district} | {price:,.0f} TJS | {area:.0f}m² | "
-                   f"Score: {old_score:.3f} → {new_score:.3f} | {new_category}")
+        # Distribution by renovation category
+        logger.info("\n🏗️ Excellent Deals by Renovation Category:")
+        excellent_by_renovation = df_result[df_result['improved_bargain_category'] == 'excellent_bargain']['renovation_category'].value_counts()
+        for renovation_cat, count in excellent_by_renovation.items():
+            total_in_cat = (df_result['renovation_category'] == renovation_cat).sum()
+            percentage = (count / total_in_cat) * 100 if total_in_cat > 0 else 0
+            logger.info(f"  {renovation_cat}: {count}/{total_in_cat} ({percentage:.1f}%)")
+        
+        # Show impact of category-aware classification
+        excellent_global = (df_result['global_bargain_category'] == 'excellent_bargain').sum()
+        excellent_category = (df_result['improved_bargain_category'] == 'excellent_bargain').sum()
+        logger.info(f"\n📊 Excellent deals - Global: {excellent_global}, Category-aware: {excellent_category}")
     
     return df_result
+
+def categorize_global_bargain(score: float, all_scores: pd.Series) -> str:
+    """Helper function for global bargain categorization."""
+    percentiles = all_scores.quantile([0.90, 0.75, 0.50, 0.25])
+    
+    if score >= percentiles[0.90]:
+        return 'exceptional_opportunity'
+    elif score >= percentiles[0.75]:
+        return 'excellent_bargain'
+    elif score >= percentiles[0.50]:
+        return 'good_bargain'
+    elif score >= percentiles[0.25]:
+        return 'fair_value'
+    elif score >= 0.4:
+        return 'market_price'
+    else:
+        return 'overpriced'
 
 def apply_improved_bargain_algorithm(input_csv: str, output_csv: str = None) -> pd.DataFrame:
     """

@@ -23,16 +23,19 @@ class SomonSpider(scrapy.Spider):
         self.logger.info(f"Spider initialized with: rooms={self.rooms}, build_state={self.build_state}, city={self.city}, property_type={self.property_type}")
 
     def start_requests(self):
-        # Build URL with user parameters
+        # Build URL with user parameters - city comes at the end
         url_parts = [
             "https://somon.tj/nedvizhimost/prodazha-kvartir",
             self.rooms,
-            self.build_state,
-            self.city
+            self.build_state
         ]
         
+        # Add property_type before city if provided
         if self.property_type:
             url_parts.append(self.property_type)
+        
+        # City always comes last
+        url_parts.append(self.city)
             
         url = "/".join(url_parts) + "/"
         self.logger.info(f"Starting scrape with URL: {url}")

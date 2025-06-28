@@ -93,6 +93,8 @@ def create_database_tables():
             investment_score REAL,
             bargain_score REAL,
             bargain_category VARCHAR(20),
+            renovation_category VARCHAR(20),
+            global_bargain_category VARCHAR(20),
             
             -- Investment analysis columns
             estimated_monthly_rent REAL,
@@ -252,6 +254,21 @@ def create_database_tables():
         )
     """)
     
+    # Add new columns for category-aware bargain detection (migration)
+    try:
+        cursor.execute("ALTER TABLE property_listings ADD COLUMN renovation_category VARCHAR(20)")
+        logger.info("Added renovation_category column")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+    
+    try:
+        cursor.execute("ALTER TABLE property_listings ADD COLUMN global_bargain_category VARCHAR(20)")
+        logger.info("Added global_bargain_category column")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+    
     # Create indexes for better performance
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_collected_by_user ON property_listings (collected_by_user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_price ON property_listings (price)")
@@ -259,6 +276,8 @@ def create_database_tables():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_district ON property_listings (district)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_bargain ON property_listings (bargain_category)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_renovation ON property_listings (renovation)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_renovation_category ON property_listings (renovation_category)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_global_bargain ON property_listings (global_bargain_category)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_risk_category ON property_listings (risk_category)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_final_recommendation ON property_listings (final_investment_recommendation)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_property_listings_renovation_score ON property_listings (renovation_score)")
