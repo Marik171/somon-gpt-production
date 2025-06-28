@@ -379,10 +379,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               </Box>
             </Grid>
           )}
-          {property.floor && (
+          {property.floor !== undefined && property.floor !== null && (
             <Grid item xs={6}>
               <Typography variant="body2" color="text.secondary">
-                Floor {property.floor}
+                {property.floor === 0 ? 'Basement' : `Floor ${property.floor}`}
                 {property.total_floors && `/${property.total_floors}`}
               </Typography>
             </Grid>
@@ -476,7 +476,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
             {/* Monthly Rent and Cash Flow */}
             <Grid container spacing={1} sx={{ mb: 1.5 }}>
-              {property.estimated_monthly_rent && (
+              {(property.total_monthly_rent || property.estimated_monthly_rent) && (
                 <Grid item xs={6}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <Home sx={{ fontSize: 16, color: 'primary.main' }} />
@@ -485,8 +485,13 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
                         Monthly Rent
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatPrice(property.estimated_monthly_rent)}
+                        {formatPrice(property.total_monthly_rent || property.estimated_monthly_rent || 0)}
                       </Typography>
+                      {property.monthly_rent_premium && property.monthly_rent_premium > 0 && (
+                        <Typography variant="caption" color="success.main" sx={{ display: 'block', lineHeight: 1 }}>
+                          (+{formatPrice(property.monthly_rent_premium)} premium)
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Grid>

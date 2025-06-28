@@ -198,8 +198,8 @@ try:
     import os
     utils_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "utils"))
     sys.path.append(utils_path)
-    from predict_rental import RentalPricePredictor
-    logger.info(f"Successfully imported RentalPricePredictor from {utils_path}")
+    from predict_rental_calibrated import RentalPricePredictorCalibrated as RentalPricePredictor
+    logger.info(f"Successfully imported RentalPricePredictorCalibrated from {utils_path}")
 except ImportError as e:
     logger.warning(f"Could not import rental predictor: {e}")
     RentalPricePredictor = None
@@ -265,6 +265,7 @@ class PropertyResponse(BaseModel):
     view_count: int = 0
     # Investment analysis fields
     estimated_monthly_rent: Optional[float] = None
+    total_monthly_rent: Optional[float] = None
     annual_rental_income: Optional[float] = None
     gross_rental_yield: Optional[float] = None
     net_rental_yield: Optional[float] = None
@@ -1263,6 +1264,7 @@ async def search_properties(
                     view_count=safe_get_row_value(row, 'view_count', 0),
                     # Investment analysis fields
                     estimated_monthly_rent=safe_get_row_value(row, 'estimated_monthly_rent'),
+                    total_monthly_rent=safe_get_row_value(row, 'total_monthly_rent'),
                     annual_rental_income=safe_get_row_value(row, 'annual_rental_income'),
                     gross_rental_yield=safe_get_row_value(row, 'gross_rental_yield'),
                     net_rental_yield=safe_get_row_value(row, 'net_rental_yield'),
@@ -1506,6 +1508,7 @@ async def get_property_detail(property_id: int, current_user: Optional[UserInDB]
         view_count=safe_get_row_value(row, 'view_count', 0),
         # Investment analysis fields
         estimated_monthly_rent=safe_get_row_value(row, 'estimated_monthly_rent'),
+        total_monthly_rent=safe_get_row_value(row, 'total_monthly_rent'),
         annual_rental_income=safe_get_row_value(row, 'annual_rental_income'),
         gross_rental_yield=safe_get_row_value(row, 'gross_rental_yield'),
         net_rental_yield=safe_get_row_value(row, 'net_rental_yield'),
@@ -2110,7 +2113,7 @@ async def get_filter_ranges():
             price_max=float(price_result[1]) if price_result[1] else 1000000.0,
             area_min=float(area_result[0]) if area_result[0] else 0.0,
             area_max=float(area_result[1]) if area_result[1] else 500.0,
-            floor_min=float(floor_result[0]) if floor_result[0] else 1.0,
+            floor_min=float(floor_result[0]) if floor_result[0] else 0.0,
             floor_max=float(floor_result[1]) if floor_result[1] else 50.0
         )
         
@@ -2122,7 +2125,7 @@ async def get_filter_ranges():
             price_max=1000000.0,
             area_min=0.0,
             area_max=500.0,
-            floor_min=1.0,
+            floor_min=0.0,
             floor_max=50.0
         )
 

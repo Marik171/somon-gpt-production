@@ -71,6 +71,7 @@ export interface Property {
   bargain_category?: string;
   // Investment metrics from rental prediction model
   estimated_monthly_rent?: number;
+  total_monthly_rent?: number;
   annual_rental_income?: number;
   gross_rental_yield?: number;
   net_rental_yield?: number;

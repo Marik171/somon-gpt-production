@@ -445,7 +445,9 @@ def calculate_floor_features(df: pd.DataFrame) -> pd.DataFrame:
     
     # Floor category (ground, middle, top)
     def categorize_floor(floor):
-        if floor == 1:
+        if floor == 0:
+            return 'basement'
+        elif floor == 1:
             return 'ground'
         elif floor <= 3:
             return 'low'
@@ -458,10 +460,11 @@ def calculate_floor_features(df: pd.DataFrame) -> pd.DataFrame:
     
     # Floor preference score (middle floors often preferred)
     floor_preference = {
-        'ground': 0.6,  # Less preferred (noise, security)
-        'low': 0.8,     # Good
-        'middle': 1.0,  # Most preferred
-        'high': 0.7     # Good views but elevator dependency
+        'basement': 0.05, # Strongly discouraged (moisture, light, accessibility, resale issues)
+        'ground': 0.6,    # Less preferred (noise, security)
+        'low': 0.8,       # Good
+        'middle': 1.0,    # Most preferred
+        'high': 0.7       # Good views but elevator dependency
     }
     df['floor_preference_score'] = df['floor_category'].map(floor_preference)
     
@@ -1742,7 +1745,9 @@ def calculate_rental_yield_features(df: pd.DataFrame) -> pd.DataFrame:
     df = calculate_renovation_risk_assessment(df)
     
     # Calculate comprehensive investment metrics
-    df['annual_rental_income'] = df['estimated_monthly_rent'] * 12
+    # Include renovation premium in total rental income
+    df['total_monthly_rent'] = df['estimated_monthly_rent'] + df.get('monthly_rent_premium', 0).fillna(0)
+    df['annual_rental_income'] = df['total_monthly_rent'] * 12
     
     # Calculate yields based on TOTAL INVESTMENT (purchase + renovation)
     df['gross_rental_yield'] = (df['annual_rental_income'] / df['total_investment_required'] * 100).round(2)
