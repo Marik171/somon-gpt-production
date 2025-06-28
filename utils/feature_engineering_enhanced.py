@@ -1746,7 +1746,10 @@ def calculate_rental_yield_features(df: pd.DataFrame) -> pd.DataFrame:
     
     # Calculate comprehensive investment metrics
     # Include renovation premium in total rental income
-    df['total_monthly_rent'] = df['estimated_monthly_rent'] + df.get('monthly_rent_premium', 0).fillna(0)
+    if 'monthly_rent_premium' in df.columns:
+        df['total_monthly_rent'] = df['estimated_monthly_rent'] + df['monthly_rent_premium'].fillna(0)
+    else:
+        df['total_monthly_rent'] = df['estimated_monthly_rent']
     df['annual_rental_income'] = df['total_monthly_rent'] * 12
     
     # Calculate yields based on TOTAL INVESTMENT (purchase + renovation)
