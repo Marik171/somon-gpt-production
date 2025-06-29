@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../services/auth';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,9 +17,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          minHeight: '60vh',
+          gap: 2
+        }}
+      >
+        <CircularProgress size={60} />
+        <Typography variant="body1" color="text.secondary">
+          Verifying access...
+        </Typography>
+      </Box>
     );
   }
 

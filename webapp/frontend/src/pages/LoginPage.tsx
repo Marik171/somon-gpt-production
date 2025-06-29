@@ -1,11 +1,34 @@
 import React, { useEffect } from 'react';
-import { Container, Paper, Box, Typography } from '@mui/material';
+import { Container, Paper, Box, Typography, CircularProgress } from '@mui/material';
 import { Navigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth';
 import { useAuth } from '../services/auth';
 
 const LoginPage: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 8 }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '60vh',
+            gap: 2
+          }}
+        >
+          <CircularProgress size={60} />
+          <Typography variant="body1" color="text.secondary">
+            Checking authentication...
+          </Typography>
+        </Box>
+      </Container>
+    );
+  }
 
   // Redirect to home if already authenticated
   if (isAuthenticated && user) {

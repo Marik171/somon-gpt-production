@@ -42,6 +42,7 @@ export interface ApiResponse<T = any> {
 class AuthService {
   private tokenKey = 'real_estate_token';
   private userKey = 'real_estate_user';
+  private isRedirecting = false; // Prevent multiple redirects
 
   constructor() {
     // Set up axios interceptor for adding auth token
@@ -60,9 +61,20 @@ class AuthService {
     axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !this.isRedirecting) {
+          this.isRedirecting = true;
           this.logout();
-          window.location.href = '/login';
+          
+          // Use React Router navigation instead of window.location.href
+          // Only redirect if not already on login page
+          if (window.location.pathname !== '/login') {
+            setTimeout(() => {
+              window.location.href = '/login';
+              this.isRedirecting = false;
+            }, 100);
+          } else {
+            this.isRedirecting = false;
+          }
         }
         return Promise.reject(error);
       }
@@ -119,29 +131,45 @@ class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.userKey);
+    try {
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.userKey);
+    } catch (error) {
+      console.error('Error clearing localStorage during logout:', error);
+    }
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    try {
+      return localStorage.getItem(this.tokenKey);
+    } catch (error) {
+      console.error('Error accessing localStorage for token:', error);
+      return null;
+    }
   }
 
   getUser(): User | null {
-    const userStr = localStorage.getItem(this.userKey);
-    if (userStr) {
-      try {
-        return JSON.parse(userStr);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        return null;
+    try {
+      const userStr = localStorage.getItem(this.userKey);
+      if (userStr) {
+        try {
+          return JSON.parse(userStr);
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          // Clear corrupted data
+          this.logout();
+          return null;
+        }
       }
+      return null;
+    } catch (error) {
+      console.error('Error accessing localStorage for user:', error);
+      return null;
     }
-    return null;
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return !!this.getToken() && !this.isTokenExpired();
   }
 
   isTokenExpired(): boolean {
@@ -174,44 +202,54 @@ class AuthService {
 export const authService = new AuthService();
 
 // React hook for authentication
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(authService.getUser());
-  const [isLoading, setIsLoading] = useState(true); // Start with loading true
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Force re-render when auth state changes
-  const [authVersion, setAuthVersion] = useState(0);
-
-  useEffect(() => {
-    // Check authentication status on mount
-    const checkAuth = async () => {
+  // Stable check auth function to prevent infinite loops
+  const checkAuth = useCallback(async () => {
+    try {
       setIsLoading(true);
-      if (authService.isAuthenticated() && !authService.isTokenExpired()) {
+      
+      const token = authService.getToken();
+      const storedUser = authService.getUser();
+      
+      if (token && !authService.isTokenExpired() && storedUser) {
+        // Try to verify token with backend
         try {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
           setIsAuthenticated(true);
         } catch (error) {
+          // Token is invalid, clear auth state
+          authService.logout();
           setUser(null);
           setIsAuthenticated(false);
         }
       } else {
+        // No valid token, clear auth state
         setUser(null);
         setIsAuthenticated(false);
       }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
       setIsLoading(false);
-    };
+    }
+  }, []);
 
+  useEffect(() => {
     checkAuth();
 
     // Listen for storage changes (e.g., login in another tab)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'real_estate_token' || e.key === 'real_estate_user') {
-        setUser(authService.getUser());
-        setIsAuthenticated(authService.isAuthenticated());
-        setAuthVersion(prev => prev + 1);
+        checkAuth();
       }
     };
 
@@ -220,7 +258,7 @@ export function useAuth() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [authVersion]);
+  }, [checkAuth]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -228,7 +266,6 @@ export function useAuth() {
       const response = await authService.login(email, password);
       setUser(response.user);
       setIsAuthenticated(true);
-      setAuthVersion(prev => prev + 1); // Force re-render
       return response;
     } catch (error) {
       setUser(null);
@@ -255,7 +292,6 @@ export function useAuth() {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
-    setAuthVersion(prev => prev + 1); // Force re-render
   };
 
   return {
